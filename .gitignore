@@ -1,0 +1,21 @@
+# 本地 worktree 与临时产物
+.worktrees/
+tmp/
+.cache/
+
+# Python
+__pycache__/
+*.pyc
+.venv/
+
+# Node（若使用构建脚本）
+node_modules/
+
+# 编辑器与系统
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+
+# 生成日志
+*.log

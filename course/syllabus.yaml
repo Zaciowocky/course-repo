@@ -1,0 +1,16 @@
+course:
+  id: RAG-101
+  title: 检索增强生成入门
+  version: 0.1.0
+  semester: 2026-autumn
+  objectives:
+    - 能说明检索与生成各自负责什么
+    - 能判断一条回答是否有可回查的依据
+  scope:
+    include: [检索增强生成的基本结构, 检索与生成的衔接]
+    exclude: [模型训练细节, 向量数据库运维]
+
+sessions:
+  - id: S01
+    title: 检索增强生成的基本结构
+    knowledge_points: [KP-RAG-01, KP-RAG-02]

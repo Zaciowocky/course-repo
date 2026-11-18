@@ -1,0 +1,24 @@
+knowledge_points:
+  - id: KP-RAG-01
+    title: 检索增强生成的基本结构
+    session: S01
+    prerequisites: []
+    difficulty: 入门
+    objectives:
+      - 说清查询编码、检索、生成三者的分工
+    assessment: 能画出五步链路并指出每步的输入输出
+    core: true
+    sources: [SRC-01]
+    pages: []
+
+  - id: KP-RAG-02
+    title: 检索结果与生成内容的衔接
+    session: S01
+    prerequisites: [KP-RAG-01]
+    difficulty: 进阶
+    objectives:
+      - 能判断生成内容是否落在检索到的材料范围内
+    assessment: 给定一段回答，指出其中哪些结论可回查
+    core: true
+    sources: [SRC-01, SRC-02]
+    pages: []

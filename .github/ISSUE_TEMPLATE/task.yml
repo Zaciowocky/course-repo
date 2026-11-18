@@ -1,0 +1,35 @@
+name: 任务
+description: 一个可验收的开发或内容任务
+labels: ["type/feat"]
+body:
+  - type: textarea
+    id: background
+    attributes:
+      label: 背景
+      description: 为什么要做这件事，属于哪个纵向块（生产／学习／改课）
+    validations:
+      required: true
+  - type: textarea
+    id: acceptance
+    attributes:
+      label: 验收标准
+      description: 写成可以逐条打勾的形式，没有标准不开工
+      placeholder: |
+        - [ ] 从空仓能跑通到 XX
+        - [ ] 校验脚本通过
+    validations:
+      required: true
+  - type: textarea
+    id: contract
+    attributes:
+      label: 涉及的契约
+      description: 会用到或修改哪些字段／接口，没有就写“无”
+    validations:
+      required: true
+  - type: textarea
+    id: deps
+    attributes:
+      label: 依赖
+      description: 依赖哪些 Issue、哪个人、哪些外部条件
+    validations:
+      required: false
