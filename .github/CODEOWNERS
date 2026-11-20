@@ -1,6 +1,9 @@
-# 默认由仓库负责人 review；后期可按目录分配
-*       @xjx
+# 代码所有者：用于 review 分配
+# 中期演示后把老师加进来做必审
+*           @Zaciowocky @spongeok @hahababa123
 
-/course/    @xjx
-/materials/ @xjx
-/tools/     @xjx
+/course/        @Zaciowocky
+/contracts/     @spongeok @Zaciowocky
+/materials/     @Zaciowocky
+/tools/         @Zaciowocky
+/.github/       @Zaciowocky
