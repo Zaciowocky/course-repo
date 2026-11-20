@@ -1,20 +1,21 @@
+version: 0.1.0
 sources:
-  - id: SRC-01
+  - id: SRC-001
     title: Retrieval-Augmented Generation for Knowledge-Intensive NLP Tasks
     kind: paper
     tier: 权威
     publisher: NeurIPS 2020
     url: https://arxiv.org/abs/2005.11401
     fetched: 2026-11-13
-    applies_to: [KP-RAG-01, KP-RAG-02]
+    applies_to: [KP-RAG-001, KP-RAG-002]
     usage: 课程范围内的权威依据
 
-  - id: SRC-02
+  - id: SRC-002
     title: 课程讲义（教师指定）
     kind: course
     tier: 指定
     publisher: 课程组
     url: local
     fetched: 2026-11-13
-    applies_to: [KP-RAG-02]
+    applies_to: [KP-RAG-002]
     usage: 决定课程范围与教学要求

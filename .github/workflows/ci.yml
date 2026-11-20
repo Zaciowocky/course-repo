@@ -7,6 +7,7 @@ on:
 
 jobs:
   validate:
+    name: 课程结构校验
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -17,3 +18,16 @@ jobs:
         run: pip install pyyaml
       - name: 校验课程结构
         run: python tools/check_course.py
+
+  tests:
+    name: 契约与单元测试
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: 安装依赖
+        run: pip install pyyaml jsonschema pytest
+      - name: 运行测试
+        run: pytest -q

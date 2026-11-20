@@ -1,5 +1,6 @@
+version: 0.1.0
 knowledge_points:
-  - id: KP-RAG-01
+  - id: KP-RAG-001
     title: 检索增强生成的基本结构
     session: S01
     prerequisites: []
@@ -8,17 +9,25 @@ knowledge_points:
       - 说清查询编码、检索、生成三者的分工
     assessment: 能画出五步链路并指出每步的输入输出
     core: true
-    sources: [SRC-01]
+    sources: [SRC-001]
     pages: []
+    misconceptions:
+      - code: MIS-RAG-001-01
+        name: 把检索当成模型记忆的一部分
+      - code: MIS-RAG-001-02
+        name: 认为检索结果一定被完整使用
 
-  - id: KP-RAG-02
+  - id: KP-RAG-002
     title: 检索结果与生成内容的衔接
     session: S01
-    prerequisites: [KP-RAG-01]
+    prerequisites: [KP-RAG-001]
     difficulty: 进阶
     objectives:
       - 能判断生成内容是否落在检索到的材料范围内
     assessment: 给定一段回答，指出其中哪些结论可回查
     core: true
-    sources: [SRC-01, SRC-02]
+    sources: [SRC-001, SRC-002]
     pages: []
+    misconceptions:
+      - code: MIS-RAG-002-01
+        name: 把相关性当成正确性

@@ -1,0 +1,20 @@
+version: 0.1.0
+frozen: 2026-11-20
+
+prefixes:
+  course:     {pattern: "^[A-Z]{3,4}$",                 example: "RAG"}
+  session:    {pattern: "^S[0-9]{2}$",                  example: "S01"}
+  knowledge:  {pattern: "^KP-[A-Z]{3,4}-[0-9]{3}$",     example: "KP-RAG-003"}
+  objective:  {pattern: "^OBJ-[A-Z]{3,4}-[0-9]{3}$",    example: "OBJ-RAG-001"}
+  page:       {pattern: "^PG-S[0-9]{2}-[0-9]{3}$",      example: "PG-S01-001"}
+  activity:   {pattern: "^ACT-S[0-9]{2}-[0-9]{3}$",     example: "ACT-S01-001"}
+  node:       {pattern: "^NODE-S[0-9]{2}-[0-9]{3}$",    example: "NODE-S01-001"}
+  source:     {pattern: "^SRC-[0-9]{3}$",               example: "SRC-001"}
+  overlay:    {pattern: "^OV-[0-9]{3}-[0-9]{2}$",       example: "OV-003-01"}
+  misconception: {pattern: "^MIS-[A-Z]{3,4}-[0-9]{3}-[0-9]{2}$", example: "MIS-RAG-003-01"}
+
+rules:
+  - 知识点 ID 是全流程主键，页面、题目、学习证据、修订记录都通过它关联。
+  - 课节号与页码只在课节内唯一，跨课节引用一律用知识点 ID。
+  - 误区编码由教师端在 knowledge_points.yaml 登记；学伴判错时只能从中选，选不到记 other。
+  - ID 一旦发布不再复用；知识点删除时保留 ID 并标记 retired。

@@ -1,5 +1,6 @@
+version: 0.1.0
 course:
-  id: RAG-101
+  id: RAG
   title: 检索增强生成入门
   version: 0.1.0
   semester: 2026-autumn
@@ -13,4 +14,4 @@ course:
 sessions:
   - id: S01
     title: 检索增强生成的基本结构
-    knowledge_points: [KP-RAG-01, KP-RAG-02]
+    knowledge_points: [KP-RAG-001, KP-RAG-002]

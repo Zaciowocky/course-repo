@@ -8,14 +8,14 @@
 
 ## 分支与 worktree
 
-- 分支命名：`feat/<issue号>-<短描述>`、`fix/<issue号>-<短描述>`。
+- 分支命名：`task/<issue号>-<短描述>`、`fix/<issue号>-<短描述>`。
 - 一个 Issue 一个 worktree，放在仓库外的 `.worktrees/<issue号>`：
 
   ```bash
-  git worktree add ../.worktrees/12 feat/12-make-session
+  git worktree add ../.worktrees/12 task/12-make-session
   ```
 
-- 新功能与 bug 并行：功能在 `feat/*` 的 worktree 里写，bug 从 main 拉 `fix/*` 的 worktree 单独修，互不打断。
+- 新功能与 bug 并行：功能在 `task/*` 的 worktree 里写，bug 从 main 拉 `fix/*` 的 worktree 单独修，互不打断。
 - 合并后清理：`git worktree remove ../.worktrees/12`。
 
 ## PR
