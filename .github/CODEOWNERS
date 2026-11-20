@@ -1,8 +1,9 @@
-# 代码所有者：用于 review 分配；现在三人平权，等中期后把老师加进来做必审
+# 代码所有者：用于 review 分配
+# 中期演示后把老师加进来做必审
 *           @Zaciowocky @spongeok @hahababa123
 
 /course/        @Zaciowocky
-/contracts/     @Zaciowocky @spongeok @hahababa123
+/contracts/     @spongeok @Zaciowocky
 /materials/     @Zaciowocky
 /tools/         @Zaciowocky
 /.github/       @Zaciowocky
