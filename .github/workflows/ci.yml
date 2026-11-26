@@ -28,6 +28,6 @@ jobs:
         with:
           python-version: "3.11"
       - name: 安装依赖
-        run: pip install pyyaml jsonschema pytest
+        run: pip install pyyaml jsonschema pytest fastapi httpx
       - name: 运行测试
         run: pytest -q
