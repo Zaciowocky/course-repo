@@ -1,0 +1,45 @@
+version: 0.1.0
+frozen: 2026-11-20
+owner: 谢文博
+
+auth:
+  token: 学生以「学号 + 一次性邀请码」通过注册接口换取 Bearer token，可吊销
+  scope: 服务端按身份限定作用域，越权读取返回 403
+  log: 只记参数摘要，不记对话原文
+
+student_tools:
+  - name: get_course_version
+    request:  {course_id: string}
+    response: {latest_tag: string, changelog: string, migration_required: boolean}
+  - name: report_progress
+    request:  {report: object}          # 按 report.schema.json 校验，report_id 去重
+    response: {accepted: integer, rejected: integer, errors: array}
+  - name: get_announcements
+    request:  {course_id: string}
+    response: {announcements: array}
+  - name: report_issue
+    request:  {course_id: string, kp_id: string, question: string, context: object}
+    response: {issue_id: string, eta: string}
+
+teacher_tools:
+  - name: get_class_view
+    request:  {course_id: string, kp_ids: [string]}
+    response: {kp_stats: array}          # 上报人数 < 5 的知识点不返回数字
+  - name: list_issues
+    request:  {course_id: string, status: "pending|resolved"}
+    response: {issues: array}
+  # 以下两个在阶段④前冻结
+  - name: TBD_1
+    note: 与周报需求会签后确定（候选：publish_announcement）
+  - name: TBD_2
+    note: 与周报需求会签后确定（候选：update_issue_status）
+
+errors:
+  - code: AUTH-401-01
+    meaning: token 缺失或失效
+  - code: AUTH-403-01
+    meaning: 越权读取他人数据
+  - code: DATA-422-01
+    meaning: report 校验不通过
+  - code: DATA-409-01
+    meaning: report_id 重复

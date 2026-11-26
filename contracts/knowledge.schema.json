@@ -1,0 +1,104 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "knowledge_points.yaml",
+  "type": "object",
+  "required": [
+    "version",
+    "knowledge_points"
+  ],
+  "properties": {
+    "version": {
+      "type": "string"
+    },
+    "knowledge_points": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "id",
+          "title",
+          "session",
+          "prerequisites",
+          "difficulty",
+          "objectives",
+          "assessment",
+          "sources"
+        ],
+        "properties": {
+          "id": {
+            "type": "string",
+            "pattern": "^KP-[A-Z]{3,4}-[0-9]{3}$"
+          },
+          "title": {
+            "type": "string",
+            "minLength": 2
+          },
+          "session": {
+            "type": "string",
+            "pattern": "^S[0-9]{2}$"
+          },
+          "prerequisites": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "difficulty": {
+            "enum": [
+              "入门",
+              "进阶",
+              "挑战"
+            ]
+          },
+          "objectives": {
+            "type": "array",
+            "minItems": 1,
+            "items": {
+              "type": "string"
+            }
+          },
+          "assessment": {
+            "type": "string",
+            "minLength": 4
+          },
+          "core": {
+            "type": "boolean"
+          },
+          "sources": {
+            "type": "array",
+            "minItems": 1,
+            "items": {
+              "type": "string"
+            }
+          },
+          "pages": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "misconceptions": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "required": [
+                "code",
+                "name"
+              ],
+              "properties": {
+                "code": {
+                  "type": "string",
+                  "pattern": "^MIS-[A-Z]{3,4}-[0-9]{3}-[0-9]{2}$"
+                },
+                "name": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        },
+        "additionalProperties": false
+      }
+    }
+  }
+}

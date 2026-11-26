@@ -1,0 +1,61 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "学习事件",
+  "type": "object",
+  "required": [
+    "course_id",
+    "version",
+    "kp_id",
+    "op"
+  ],
+  "properties": {
+    "course_id": {
+      "type": "string"
+    },
+    "version": {
+      "type": "string"
+    },
+    "kp_id": {
+      "type": "string",
+      "pattern": "^KP-[A-Z]{3,4}-[0-9]{3}$"
+    },
+    "page_id": {
+      "type": "string",
+      "pattern": "^PG-S[0-9]{2}-[0-9]{3}$"
+    },
+    "activity_id": {
+      "type": "string"
+    },
+    "op": {
+      "enum": [
+        "page_enter",
+        "page_leave",
+        "interact",
+        "answer",
+        "hint"
+      ]
+    },
+    "result": {
+      "enum": [
+        "correct",
+        "incorrect",
+        "partial",
+        "none"
+      ]
+    },
+    "hint_level": {
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 4
+    },
+    "duration_s": {
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 600
+    },
+    "done": {
+      "type": "boolean"
+    }
+  },
+  "additionalProperties": false
+}
