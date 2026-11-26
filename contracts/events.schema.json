@@ -31,7 +31,7 @@
     },
     "activity_id": {
       "type": "string",
-      "description": "课件里的活动或题目 ID，如 ACT-S01-001。"
+      "description": "课件里的活动或题目 ID，如 ACT-S01-001。op=answer 时应带 activity_id 或 item_hash（为兼容 v0.1 不做强制）；op=answer_change 时二者必须有一个。"
     },
     "op": {
       "enum": [
@@ -44,7 +44,7 @@
         "revisit",
         "answer_change"
       ],
-      "description": "操作类型。v0.2 新增三种“纠结信号”：ask 向学伴提问（只计次数，问题原文只进问答记忆）、revisit 回跳到看过的页面、answer_change 提交前改答案。"
+      "description": "操作类型。v0.2 新增三种“纠结信号”：ask 向学伴提问（只计次数，问题原文只进问答记忆）、revisit 回跳到看过的页面（必须带 page_id）、answer_change 提交前改答案（必须带 activity_id 或 item_hash）。消费者遇到未识别的 op 须忽略并计数，见 contracts/README.md。"
     },
     "result": {
       "enum": [
@@ -65,7 +65,7 @@
       "type": "integer",
       "minimum": 0,
       "maximum": 3600,
-      "description": "用时（秒）。本地事件保留真实时长，上限 3600；上报 report_progress 前按 600 截断（任务书 4.4 的统计口径）。op=page_leave 时为本页停留时长，用来判断“超时停留”。"
+      "description": "用时（秒）。本地事件保留真实时长，上限 3600，超出由写入方截断为 3600（v0.1 为 600，v0.2 只放宽，旧事件仍合法）。上报时的统计口径由 report.schema.json 规定，不在本契约里定。op=page_leave 时为本页停留时长，用来判断“超时停留”。"
     },
     "done": {
       "type": "boolean",
@@ -74,13 +74,13 @@
     "event_id": {
       "type": "string",
       "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$",
-      "description": "v0.2 新增。事件唯一 ID，小写 UUID，建议 UUIDv7（按时间有序）。写入事件表时必须有，前端没带由写入方补齐；证据表的“来源事件 ID 列表”引用它。"
+      "description": "v0.2 新增。事件唯一 ID，小写 UUID，建议 UUIDv7（按时间有序）。为兼容 v0.1，本 schema 中可选；写入 learner.db 事件表时由写入方补齐，表里每一行都有。证据表的“来源事件 ID 列表”引用它。"
     },
     "ts": {
       "type": "string",
       "format": "date-time",
       "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}(\\.[0-9]+)?(Z|[+-][0-9]{2}:[0-9]{2})$",
-      "description": "v0.2 新增。事件发生时间，ISO 8601 带时区，如 2026-11-27T14:03:05+08:00。写入事件表时必须有。用于 pyBKT 作答顺序、遗忘模型和错题“首次出错时间”；精确时间戳不上报。"
+      "description": "v0.2 新增。事件发生时间，ISO 8601 带时区，如 2026-11-27T14:03:05+08:00。为兼容 v0.1，本 schema 中可选；写入 learner.db 事件表时由写入方补齐（没带就取写入时刻），表里每一行都有。用于 pyBKT 作答顺序、遗忘模型和错题“首次出错时间”；精确时间戳不上报。"
     },
     "session_id": {
       "type": "string",
@@ -136,6 +136,49 @@
             ]
           }
         }
+      }
+    },
+    {
+      "if": {
+        "required": [
+          "op"
+        ],
+        "properties": {
+          "op": {
+            "const": "revisit"
+          }
+        }
+      },
+      "then": {
+        "required": [
+          "page_id"
+        ]
+      }
+    },
+    {
+      "if": {
+        "required": [
+          "op"
+        ],
+        "properties": {
+          "op": {
+            "const": "answer_change"
+          }
+        }
+      },
+      "then": {
+        "anyOf": [
+          {
+            "required": [
+              "activity_id"
+            ]
+          },
+          {
+            "required": [
+              "item_hash"
+            ]
+          }
+        ]
       }
     }
   ]

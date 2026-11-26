@@ -4,7 +4,7 @@
 
 ## 冻结规则
 
-- 文件头必须有 `version` 字段；改动走 PR，三人会签（谢文博主评审）。
+- 文件头必须有 `version` 字段；改动走 PR，三人会签（邢家鑫主评审）。
 - **只增不改**：新增字段随时可以，修改或删除已有字段必须走 PR 并在群里通知。
 - **新增枚举值时，消费者遇到未识别的值必须忽略并计数，不得抛错**（例如 `op` 新增了 `ask` / `revisit` / `answer_change`）。
 - 各端启动时校验契约版本，不兼容就拒绝写入并提示。
@@ -37,7 +37,13 @@
 | `misconception`（MIS 编码或 other，仅限做错的作答） | 误区列表与上报误区计数（4.3、4.4） |
 | `op` 增加 `ask` / `revisit` / `answer_change` | 纠结信号：提问、回跳、改答（4.3） |
 
-另给旧字段补了中文 `description`（含 `hint_level` 0—4 各级含义），含义不变。
+其他变化：
+
+- `duration_s` 上限 600 → 3600（只放宽，v0.1 事件仍合法）：本地事件保留真实时长，上报口径由 `report.schema.json` 规定。
+- 新增的 op 带约束：`revisit` 必须带 `page_id`，`answer_change` 必须带 `activity_id` 或 `item_hash`。`op=answer` 为兼容 v0.1 不强制题目标识。
+- `event_id`、`ts` 在 schema 中可选（兼容 v0.1），写入 learner.db 事件表时由写入方补齐。
+- 消费者遇到未识别的 op 必须忽略并计数，见上方冻结规则。
+- 给旧字段补了中文 `description`（含 `hint_level` 0—4 各级含义），含义不变。
 
 ### context v0.1
 

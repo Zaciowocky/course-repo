@@ -91,9 +91,28 @@ def test_event_v02_sample_matches_schema():
     jsonschema.validate(event, load_json(EVENTS))
 
 
-@pytest.mark.parametrize("op", ["ask", "revisit", "answer_change"])
-def test_event_v02_new_ops(op):
-    jsonschema.validate(dict(BASE_EVENT, op=op, page_id="PG-S01-001"), load_json(EVENTS))
+@pytest.mark.parametrize("op,extra", [
+    ("ask", {}),
+    ("revisit", {"page_id": "PG-S01-001"}),
+    ("answer_change", {"activity_id": "ACT-S01-002"}),
+    ("answer_change", {"item_hash": "3f9a1c0be47d2a85"}),
+])
+def test_event_v02_new_ops(op, extra):
+    jsonschema.validate(dict(BASE_EVENT, op=op, **extra), load_json(EVENTS))
+
+
+@pytest.mark.parametrize("bad", [
+    {"op": "revisit"},                                  # 回跳没说跳到哪页
+    {"op": "answer_change", "page_id": "PG-S01-001"},   # 改答没说是哪道题
+])
+def test_event_new_ops_need_their_ids(bad):
+    with pytest.raises(jsonschema.ValidationError):
+        jsonschema.validate(dict(BASE_EVENT, **bad), load_json(EVENTS))
+
+
+def test_event_v01_answer_without_item_id_still_valid():
+    """只增不改：v0.1 允许 answer 不带题目标识，v0.2 不收紧。"""
+    jsonschema.validate(dict(BASE_EVENT, op="answer", result="correct"), load_json(EVENTS))
 
 
 @pytest.mark.parametrize("code", ["MIS-RAG-1-1", "误区一", "OTHER"])
@@ -131,7 +150,7 @@ def test_event_rejects_bad_v02_formats(field, value):
 
 
 def test_event_allows_long_page_stay():
-    """本地事件保留真实停留时长，600 秒截断只在上报时做。"""
+    """本地事件保留真实停留时长；上报口径由 report.schema.json 规定。"""
     ev = dict(BASE_EVENT, op="page_leave", page_id="PG-S01-001", duration_s=1800)
     jsonschema.validate(ev, load_json(EVENTS))
 
