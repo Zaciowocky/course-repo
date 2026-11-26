@@ -1,0 +1,157 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "上下文包（工作台 → 学伴）",
+  "version": "0.1.0",
+  "description": "学生在工作台提问或求提示时，工作台随请求附带的当前学习位置。通道：本地 HTTP + JSON（后端只监听 127.0.0.1），回答以 SSE 流式返回。请求体约定为 {\"message\": 学生原话, \"context\": 本包}：原话只在本机流转，本包不含自由文本，因此学生求助老师时可原样附在 report_issue 的 context 里。画像与记忆不放进本包，学伴需要时经本地 MCP 工具（get_kp_state 等）查询。",
+  "type": "object",
+  "required": [
+    "course_id",
+    "version",
+    "kp_id",
+    "trigger",
+    "hint_level"
+  ],
+  "properties": {
+    "course_id": {
+      "type": "string",
+      "pattern": "^[A-Z]{3,4}$",
+      "description": "课程 ID，如 RAG。"
+    },
+    "version": {
+      "type": "string",
+      "description": "学生当前固定的课程版本（tag），如 v0.1.0。"
+    },
+    "session_id": {
+      "type": "string",
+      "pattern": "^S[0-9]{2}$",
+      "description": "课节 ID，如 S01。"
+    },
+    "kp_id": {
+      "type": "string",
+      "pattern": "^KP-[A-Z]{3,4}-[0-9]{3}$",
+      "description": "当前知识点 ID。"
+    },
+    "page_id": {
+      "type": "string",
+      "pattern": "^PG-S[0-9]{2}-[0-9]{3}$",
+      "description": "当前页面 ID；warm-up、复习等不在课件页面上时省略。"
+    },
+    "node_id": {
+      "type": "string",
+      "pattern": "^NODE-S[0-9]{2}-[0-9]{3}$",
+      "description": "学生选中或正在看的页面节点（页面上的 data-node-id），学伴生成补充时用它定位插入位置。"
+    },
+    "trigger": {
+      "enum": [
+        "ask",
+        "hint",
+        "explain",
+        "warmup",
+        "review"
+      ],
+      "description": "这次请求怎么来的：ask 学生打字提问、hint 点了“给点提示”、explain 作答后请求讲解、warmup 课前诊断、review 错题复习。"
+    },
+    "hint_level": {
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 4,
+      "description": "当前这道题已经给到的提示层级：0 还没给，1 定位，2 概念，3 步骤，4 答案讲解。"
+    },
+    "activity": {
+      "type": "object",
+      "description": "当前活动（正在做的题）；不在做题时省略。课程题填 activity_id，学伴出的题填 item_hash，二者至少有一个。",
+      "properties": {
+        "activity_id": {
+          "type": "string",
+          "pattern": "^ACT-S[0-9]{2}-[0-9]{3}$"
+        },
+        "item_hash": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{16}$"
+        },
+        "item_kind": {
+          "enum": [
+            "check",
+            "homework",
+            "diagnostic",
+            "followup",
+            "review"
+          ]
+        },
+        "is_transfer": {
+          "type": "boolean"
+        },
+        "status": {
+          "enum": [
+            "not_started",
+            "in_progress",
+            "done"
+          ]
+        }
+      },
+      "anyOf": [
+        {
+          "required": [
+            "activity_id"
+          ]
+        },
+        {
+          "required": [
+            "item_hash"
+          ]
+        }
+      ],
+      "additionalProperties": false
+    },
+    "recent_answers": {
+      "type": "array",
+      "maxItems": 5,
+      "description": "最近几次作答，新的在前，最多 5 条（与画像“近 5 次最高提示级别”一致），取自本地事件表中 op=answer 的记录。",
+      "items": {
+        "type": "object",
+        "required": [
+          "kp_id",
+          "result",
+          "hint_level"
+        ],
+        "properties": {
+          "event_id": {
+            "type": "string",
+            "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$"
+          },
+          "kp_id": {
+            "type": "string",
+            "pattern": "^KP-[A-Z]{3,4}-[0-9]{3}$"
+          },
+          "activity_id": {
+            "type": "string",
+            "pattern": "^ACT-S[0-9]{2}-[0-9]{3}$"
+          },
+          "item_hash": {
+            "type": "string",
+            "pattern": "^[0-9a-f]{16}$"
+          },
+          "result": {
+            "enum": [
+              "correct",
+              "incorrect",
+              "partial",
+              "none"
+            ]
+          },
+          "hint_level": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 4
+          },
+          "misconception": {
+            "type": "string",
+            "pattern": "^(MIS-[A-Z]{3,4}-[0-9]{3}-[0-9]{2}|other)$"
+          }
+        },
+        "additionalProperties": false
+      }
+    }
+  },
+  "additionalProperties": false
+}

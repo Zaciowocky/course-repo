@@ -15,10 +15,32 @@
 | `ids.yaml` | 七类 ID 的编码规则 | 谢文博 | v0.1 冻结 |
 | `knowledge.schema.json` | `knowledge_points.yaml` 的字段 | 邢家鑫 | v0.1 冻结 |
 | `manifest.schema.json` | 页面清单与挂点 | 邢家鑫 | v0.1 冻结 |
-| `events.schema.json` | 学习事件 | 陈奕霖 | v0.1 冻结 |
+| `events.schema.json` | 学习事件 | 陈奕霖 | v0.2 冻结 |
+| `context.schema.json` | 上下文包（工作台 → 学伴） | 陈奕霖 | v0.1 冻结 |
 | `mcp-tools.yaml` | MCP 工具与鉴权 | 谢文博 | v0.1 冻结（教师侧 2 个待定） |
 
-后续补：`context.schema.json`（上下文包）、`overlay.schema.json`（补充格式）、`report.schema.json`（report.v0.2）、`migrations.schema.json`（迁移清单）。
+后续补：`overlay.schema.json`（补充格式）、`report.schema.json`（report.v0.2）、`migrations.schema.json`（迁移清单）。
+
+## 变更记录
+
+### events v0.2（只增不改，v0.1 事件照样合法）
+
+| 新增 | 用途（任务书） |
+|---|---|
+| `event_id`（UUID） | 证据表“来源事件 ID 列表”（4.3） |
+| `ts`（ISO 8601 带时区） | pyBKT 作答顺序、遗忘模型、错题“首次出错时间”（4.2、4.3）；不上报 |
+| `session_id`（S01） | 课节画像；warm-up、复习等无页面事件的归属（4.3） |
+| `item_kind`（check / homework / diagnostic / followup / review） | 证据表“证据类型”（4.3） |
+| `is_transfer` | “可迁移”档判定（4.3） |
+| `item_hash` | 学伴出题的题目 ID（4.2 错题本） |
+| `misconception`（MIS 编码或 other，仅限做错的作答） | 误区列表与上报误区计数（4.3、4.4） |
+| `op` 增加 `ask` / `revisit` / `answer_change` | 纠结信号：提问、回跳、改答（4.3） |
+
+另给旧字段补了中文 `description`（含 `hint_level` 0—4 各级含义），含义不变。
+
+### context v0.1
+
+学生提问或求提示时工作台附带的学习位置：课程版本、课节、知识点、页面、节点、触发方式、提示层级、当前活动、最近 5 次作答。请求体约定为 `{"message": 学生原话, "context": 上下文包}`，上下文包本身不含自由文本，可原样附在 `report_issue` 的 `context` 里。
 
 ## 未冻结项怎么处理
 
