@@ -64,8 +64,8 @@
     "duration_s": {
       "type": "integer",
       "minimum": 0,
-      "maximum": 600,
-      "description": "用时（秒），上限 600。op=page_leave 时为本页停留时长，用来判断“超时停留”。"
+      "maximum": 3600,
+      "description": "用时（秒）。本地事件保留真实时长，上限 3600；上报 report_progress 前按 600 截断（任务书 4.4 的统计口径）。op=page_leave 时为本页停留时长，用来判断“超时停留”。"
     },
     "done": {
       "type": "boolean",

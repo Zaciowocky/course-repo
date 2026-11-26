@@ -130,6 +130,17 @@ def test_event_rejects_bad_v02_formats(field, value):
         jsonschema.validate(bad, load_json(EVENTS))
 
 
+def test_event_allows_long_page_stay():
+    """本地事件保留真实停留时长，600 秒截断只在上报时做。"""
+    ev = dict(BASE_EVENT, op="page_leave", page_id="PG-S01-001", duration_s=1800)
+    jsonschema.validate(ev, load_json(EVENTS))
+
+
+def test_event_rejects_absurd_duration():
+    with pytest.raises(jsonschema.ValidationError):
+        jsonschema.validate(dict(BASE_EVENT, op="page_enter", duration_s=3601), load_json(EVENTS))
+
+
 # ---------- 上下文包 v0.1 ----------
 
 def context_sample():
