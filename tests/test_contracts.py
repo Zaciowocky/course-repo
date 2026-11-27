@@ -256,15 +256,21 @@ def test_report_rejects_precise_mastery():
         jsonschema.validate(bad, load_json(REPORT))
 
 
-@pytest.mark.parametrize("seconds", [600, 601])
-def test_report_duration_clamp(seconds):
+@pytest.mark.parametrize("seconds,ok", [
+    (600, True),
+    (1800, True),     # 一个知识点学了三次、每次 10 分钟：累计合法
+    (86400, True),
+    (86401, False),   # 累计上限一天，与 study_seconds 一致
+])
+def test_report_duration_clamp(seconds, ok):
+    """600 截断作用在每次页面停留上，kp_stats.duration_s 是截断后的累计值。"""
     data = report_sample("standard")
     data["kp_stats"][0]["duration_s"] = seconds
-    if seconds > 600:
+    if ok:
+        jsonschema.validate(data, load_json(REPORT))
+    else:
         with pytest.raises(jsonschema.ValidationError):
             jsonschema.validate(data, load_json(REPORT))
-    else:
-        jsonschema.validate(data, load_json(REPORT))
 
 
 def test_report_requires_report_id():
