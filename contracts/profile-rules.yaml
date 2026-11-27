@@ -1,0 +1,113 @@
+version: 0.1.0
+frozen: null          # 会签合并时填日期
+owner: 陈奕霖
+reviewed_by: 待成员 C 会签
+description: >-
+  learner.db 里画像怎么算的规则与可调参数：哪些作答算有效证据、怎样喂给 BKT、四档阈值、待确认、
+  误区消退、纠结信号、遗忘模型、错题五盒复习。建表见 learner.sql，状态允许做什么见 state-gate.yaml。
+  注释标「任务书」的是任务书 4.2 / 4.3 写定的数值；标「初值」的是试测前的起点，试测后按数据调整。两类改动都走契约 PR。
+
+# ---------- 有效证据：计入掌握概率和 kp_state.evidence_count 的作答 ----------
+evidence:
+  op: answer
+  item_kinds: [check, homework, diagnostic, followup, review]
+  results: [correct, incorrect, partial]       # result=none 的作答不算
+  # 下面三种只计纠结信号，不拉低掌握度（任务书：学生提问只计入纠结信号）
+  not_evidence_ops: [ask, revisit, answer_change]
+
+# ---------- 掌握概率：BKT（贝叶斯知识追踪） ----------
+mastery:
+  model: bkt
+  # 一次有效作答在 BKT 里记“对”还是“错”：
+  #   独立做对（result=correct 且 hint_level=0）记对；
+  #   提示后做对记错，但计入 kp_state.correct_with_hint；partial 记错。
+  correct_max_hint_level: 0
+  forgets: 0          # BKT 内不建模遗忘，遗忘由下面 forgetting 单独算
+  # 参数来源：学生本机只有一个人的数据，拟合不出参数，本机用课程级参数逐题更新
+  #   p' = P(会|本题结果)，再 p_next = p' + (1 - p') * learn
+  # 试测时经学生同意收集样例事件，用 pyBKT 离线拟合后写进 per_kp_params。
+  default_params_by_difficulty:     # 初值，按 knowledge_points.yaml 的 difficulty 取
+    入门: {prior: 0.30, learn: 0.25, guess: 0.20, slip: 0.10}
+    进阶: {prior: 0.20, learn: 0.18, guess: 0.20, slip: 0.10}
+    挑战: {prior: 0.10, learn: 0.12, guess: 0.15, slip: 0.10}
+  per_kp_params: {}                 # 拟合后按知识点覆盖，如 KP-RAG-003: {prior: 0.1, learn: 0.15, guess: 0.2, slip: 0.1}
+
+# ---------- 四档状态（任务书 4.3） ----------
+states:
+  min_evidence: 3                   # 任务书：有效证据少于 3 次一律待确认
+  gap_below: 0.6                    # 任务书
+  partial_at_least: 0.6             # 任务书
+  partial_min_correct_alone: 1      # 任务书：至少独立做对 1 次
+  transfer_at_least: 0.95           # 任务书
+  transfer_min_transfer_correct: 1  # 任务书：迁移题至少独立做对 1 次
+  # 自上而下取第一条满足的（“仍在出现的误区” = kp_misconceptions 里有 status=active 的行）
+  decide:
+    - state: unseen
+      when: evidence_count = 0
+    - state: gap
+      when: p_mastery < gap_below，或有仍在出现的误区
+    - state: transfer
+      when: p_mastery >= transfer_at_least，且 transfer_correct >= transfer_min_transfer_correct
+    - state: partial
+      when: p_mastery >= partial_at_least，且 correct_alone >= partial_min_correct_alone
+    - state: gap
+      when: 其余情况（如掌握概率够了但还没独立做对过）
+  # 待确认（kp_state.pending = 1）：
+  #   掌握概率照常逐题更新；state 保持最近一次确认的档位，从没确认过的知识点保持 unseen。
+  #   上报时 state 报的也是这个档位。学伴先追问或出诊断题（state-gate.yaml rules）。
+  pending_when:
+    few_evidence: evidence_count < min_evidence
+    correction: 学生发起更正、验证题还没做完
+    kp_changed: 迁移清单把该知识点标为 review（跨版本再绑定待复核）
+
+# ---------- 误区（任务书 4.3） ----------
+misconceptions:
+  # 编码只能取 knowledge_points.yaml 里该知识点登记的 misconceptions[].code，选不到记 other
+  resolve_after_correct_alone: 2    # 初值：此后该知识点上独立做对 2 次、且这个误区没再出现 → resolved
+  # 再出现时 status 回到 active、count 加 1
+
+# ---------- 学生更正（任务书 4.3 更正记录；工具 apply_correction） ----------
+corrections:
+  higher:     # 学生说“我其实会了”
+    on_open: 标待确认（pending_reason = correction），学伴出 1 道验证题，优先迁移题或没做过的检测题
+    accept_if: 验证题独立做对；作为一条有效证据照常计入掌握概率
+    on_reject: 做错或提示后做对则驳回，作答照常计入，原档位不因更正改变
+  lower:      # 学生说“我其实没懂”
+    on_open: 直接采纳，不需要验证题；state 改为 gap、清除待确认
+    p_mastery_cap: 0.5                # 初值：掌握概率降到不高于此值，防止下一次作答又算回原档
+
+# ---------- 讲法效果（任务书 4.2 讲法记忆；工具 update_strategy） ----------
+strategies:
+  # 学伴讲完记一次 used；该知识点下一次有效作答回来时由 record_event 结算：
+  # 独立做对则 success_after 加 1；无论对错都清掉 awaiting_outcome
+  settle_on: next_evidence
+
+# ---------- 纠结信号（只计数，不改掌握概率） ----------
+struggle_signals:
+  ask: op = ask
+  revisit: op = revisit
+  answer_change: op = answer_change
+  long_stay: op = page_leave 且 duration_s >= long_stay_s
+  long_stay_s: 600                  # 初值，与 report.schema.json 单次停留截断值一致
+
+# ---------- 遗忘模型（任务书 4.3：半衰期、最近成功时间、当前保持率、下次复习时间） ----------
+forgetting:
+  # retention = 2 ^ (-(now - last_success_at) / half_life_days)
+  # 保持率只用来排知识点复习提醒，不改掌握概率，也不改四档
+  initial_half_life_days: 1.0       # 初值：第一次独立做对后
+  on_success_multiplier: 2.0        # 初值：每次独立做对（含复习）半衰期翻倍
+  on_failure_multiplier: 0.5        # 初值：做错减半
+  min_half_life_days: 0.5
+  max_half_life_days: 60
+  review_when_retention_below: 0.7  # 初值：next_review_at = last_success_at + half_life_days × log2(1 / 0.7)
+
+# ---------- 错题回顾（任务书 4.2） ----------
+review:
+  box_intervals_days: [1, 2, 4, 8, 16]   # 任务书：第 1—5 盒的复习间隔；新错题进第 1 盒
+  correct_means: 独立做对（result = correct 且 hint_level 不超过 mastery.correct_max_hint_level）
+  on_correct: 升一盒，第 5 盒不再升
+  on_wrong: 回第 1 盒
+  mastered_after_box5_correct: 2         # 任务书：第 5 盒连续答对两次标记已掌握
+  daily_max: 5                           # 任务书：每天最多推送 5 道
+  priority: [overdue, low_mastery, recurring_misconception]   # 任务书：已到期 → 知识点掌握概率低 → 误区反复出现
+  variant: 同一知识点、同一误区，换数据或情境；不重复原题

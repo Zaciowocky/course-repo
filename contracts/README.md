@@ -21,6 +21,9 @@
 | `mcp-tools.yaml` | MCP 工具与鉴权 | 谢文博 | v0.1 冻结（教师侧 2 个待定） |
 | `report.schema.json` | 进度上报 report.v0.2 | 邢家鑫 | v0.2 冻结 |
 | `state-gate.yaml` | 四档状态到教学动作与补充种类的门控（本地 MCP 工具任何状态都可调用） | 陈奕霖 | v0.1 冻结 |
+| `learner.sql` | 学生本机 learner.db 建表语句：画像 5 表 + 误区子表、记忆 4 库、只追加的事件表 | 陈奕霖 | v0.1 待会签（C） |
+| `profile-rules.yaml` | 画像判定规则：有效证据、BKT、四档阈值、待确认、学生更正、误区消退、遗忘、错题五盒 | 陈奕霖 | v0.1 待会签（C） |
+| `local-mcp-tools.yaml` | 本地 MCP server 的 14 个工具：输入（JSON Schema）、输出、读写的表、错误码 | 陈奕霖 | v0.1 待会签（C） |
 
 后续补：`overlay.schema.json`（补充格式）、`migrations.schema.json`（迁移清单）。
 
@@ -69,6 +72,43 @@
 - **用时按每次停留钳到 600 再累加**：本地事件保留真实时长（events v0.2 上限 3600）；上报时每次页面停留超过 600 记 600，`kp_stats[].duration_s` 是截断后的累计值，上限一天（与 `study_seconds` 一致）。
 
 `tier: "minimal"` 时只保留进度与 `kp_id` + `state`，其余统计字段一律不出现。
+
+### learner.db v0.1、profile-rules v0.1、local-mcp-tools v0.1（契约⑭）
+
+学生本机的画像与学伴记忆库，由本地 MCP server 独占读写（任务书 4.2、4.3）。三份文件分别管“存什么”“怎么算”“谁能怎么读写”。
+
+| 表 | 任务书名称 | 要点 |
+|---|---|---|
+| `events` | 事件表 | 列与 events.schema.json v0.2 一一对应；触发器禁止改、删 |
+| `student_profile` | 基础画像 | 只有一行；`report_tier` 为空表示还没授权上报 |
+| `kp_state` | 课程画像 | 每知识点一行；计数字段与 report 的 `kp_stats` 同名，上报直接取 |
+| `kp_misconceptions` | 课程画像的误区列表 | 拆成子表，方便判断“有没有仍在出现的误区” |
+| `lesson_state` | 课节画像 | 当前位置、补习返回栈、活动状态、用过的补充 |
+| `evidence` | 证据表 | 每次状态变化一行，`event_ids` 指回具体事件 |
+| `corrections` | 更正记录 | 学生说“我其实会了 / 没懂”，验证题结果决定是否采纳 |
+| `mistakes` / `qa_memory` / `strategies` / `sessions` | 记忆四库 | 学生可逐条删除；原文列标 [仅本地] |
+
+几条约定（详见两份文件的注释）：
+
+- **事件表的枚举不写 CHECK**：SQLite 改 CHECK 要重建表，只追加的表不能重建。op、item_kind 等新增取值由本地 MCP server 按契约校验后照常写入。
+- **提示后做对在 BKT 里记“错”**：只有独立做对（`hint_level = 0`）记“对”；提示后做对另计 `correct_with_hint`。
+- **待确认不是第五档**：`pending = 1` 时掌握概率照常更新，`state` 保持最近一次确认的档位，从没确认过就是 `unseen`；上报的也是这个档位。
+- **BKT 参数用课程级的**：学生本机只有一个人的数据，拟合不出参数；先按知识点难度取初值，试测时用 pyBKT 离线拟合后回写。
+- **保持率只排复习提醒**：遗忘模型不改掌握概率和四档。
+- **清空全部数据 = 删除 learner.db 文件**：事件表不能逐条删，记忆四库可以。
+- **学生说“我没懂”直接采纳，说“我会了”要做验证题**：降档时掌握概率压到 0.5 以下，免得下一次作答又算回原档。
+
+本地 MCP 工具（`local-mcp-tools.yaml`）：
+
+| 类 | 工具 |
+|---|---|
+| 画像 | `record_event` `get_kp_state` `list_uncertain` `get_prereq_gaps` `get_lesson_state` `apply_correction` |
+| 记忆 | `add_mistake` `list_due_reviews` `record_review` `add_qa` `search_memory` `update_strategy` `write_session_summary` `get_session_summary` |
+
+- **工具清单就是学伴的权限边界**：学伴只能经这 14 个工具碰 learner.db，没有删除工具。工作台后端和 server 共用同一个数据访问模块直接调函数，“我的记录”的查看、导出、删除走那里。
+- **返回给学伴的内容不含学生原文**：返回值会进入模型上下文、发给模型服务商。学生原问题、更正理由、学生答案只写不读；学生原问题由工作台补写，不经学伴转手。
+- **`record_event` 幂等**：同一 `event_id` 重放不重复计数，离线补发安全；未识别的 op 入库但不参与计算。
+- **讲法效果由 server 结算**：学伴讲完只报 `used`，下一次有效作答回来时 `record_event` 自动记效果，不靠学伴自评。
 
 ## 未冻结项怎么处理
 

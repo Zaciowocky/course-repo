@@ -1,0 +1,468 @@
+version: 0.1.0
+frozen: null          # 会签合并时填日期
+owner: 陈奕霖
+reviewed_by: 待成员 C 会签
+description: >-
+  学生本机的本地 MCP server（任务书 4.2、4.5「画像与记忆接入」）：14 个工具的输入、输出、读写的表与错误码。
+  数据都在 learner.db（learner.sql），计算口径见 profile-rules.yaml；state-gate.yaml 规定这 14 个工具任何状态都可调用。
+  input 是标准 JSON Schema（draft-07），server 直接用作 MCP 的 inputSchema 并据此校验；
+  output 列出返回的字段，list_of / row_of 表示一行或多行 learner.sql 里那张表的指定列。
+
+server:
+  name: learner
+  transport: stdio      # 由 Hermes 以子进程启动，不开网络端口
+  db: learner.db        # 只有这个进程打开。启动时比对 meta.schema_version，不兼容就拒绝写入（LOCAL-412-01）
+  result: >-
+    成功时返回一个 JSON 对象（字段见各工具 output）；失败时 MCP 结果标 isError，内容为 {"code", "message"}
+
+callers:
+  tutor: >-
+    学伴（Hermes 经 MCP 调用）。本清单就是学伴能接触的全部本地数据：没有删除工具，读不到学生原话
+  workbench: >-
+    工作台后端。与 MCP server 共用同一个数据访问模块、直接调函数（函数名与工具名一致）。
+    “我的记录”的查看、导出、删除，以及 lesson_state 中补习返回栈、用过的补充等字段的维护也走这个模块，不开放给学伴
+
+privacy:
+  - >-
+    返回给学伴的内容会进入模型上下文、随请求发给模型服务商，所以 output 里不出现学生写的原文：
+    问答记忆只给摘要（question_raw 由工作台按本轮请求原文补写，只有“我的记录”能看）；
+    更正理由 corrections.reason、学生答案 mistakes.student_answer 不返回。
+  - 题干快照 stem_snapshot 只在 list_due_reviews 返回，用来出变式题。
+
+# 公共字段（YAML 锚点，读入后各工具的 input 是自包含的 JSON Schema）
+defs:
+  course_id: &course_id {type: string, pattern: '^[A-Z]{3,4}$'}
+  session_id: &session_id {type: string, pattern: '^S[0-9]{2}$'}
+  kp_id: &kp_id {type: string, pattern: '^KP-[A-Z]{3,4}-[0-9]{3}$'}
+  page_id: &page_id {type: string, pattern: '^PG-S[0-9]{2}-[0-9]{3}$'}
+  activity_id: &activity_id {type: string, pattern: '^ACT-S[0-9]{2}-[0-9]{3}$'}
+  item_hash: &item_hash {type: string, pattern: '^[0-9a-f]{16}$'}
+  event_id: &event_id {type: string, pattern: '^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$'}
+  ts: &ts {type: string, pattern: '^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}(\.[0-9]+)?(Z|[+-][0-9]{2}:[0-9]{2})$'}
+  course_version: &course_version {type: string, minLength: 1, maxLength: 32}
+  misconception: &misconception {type: string, pattern: '^(MIS-[A-Z]{3,4}-[0-9]{3}-[0-9]{2}|other)$'}
+  hint_level: &hint_level {type: integer, minimum: 0, maximum: 4}
+  strategy_kind: &strategy_kind {type: string, enum: [example, analogy, diagram, code, counterexample]}
+  item_ref: &item_ref        # 题目：课程题用活动 ID，学伴出的题用内容哈希，二选一
+    type: object
+    additionalProperties: false
+    minProperties: 1
+    maxProperties: 1
+    properties: {activity_id: *activity_id, item_hash: *item_hash}
+
+tools:
+  # ==================== 画像类（任务书 4.3） ====================
+  - name: record_event
+    group: profile
+    callers: [workbench, tutor]
+    when: 工作台记每个页面操作与作答；学伴记它出的追问、复习、诊断题的作答
+    input_schema_file: events.schema.json     # 输入就是一条学习事件；缺 event_id、ts 时由 server 补齐
+    writes: [events, kp_state, kp_misconceptions, evidence, lesson_state, strategies]
+    effects:
+      - 先写事件表，再按 profile-rules.yaml 更新 kp_state：计数、掌握概率、纠结信号、误区、四档与待确认
+      - 状态或待确认标记变化时写一行 evidence
+      - page_enter 更新 lesson_state.current_page_id；带 activity_id 的作答更新 activity_status
+      - 该知识点有讲完待验证的讲法（strategies.awaiting_outcome = 1）时，用这次有效作答结算讲法效果
+      - event_id 已存在视为重放：不再入库、不重复计数，返回 duplicate = true（离线补发时幂等）
+      - 未识别的 op 照常入库，不参与计算，返回 ignored = true（契约冻结规则：忽略并计数）
+    output:
+      event_id: string
+      duplicate: boolean
+      ignored: boolean
+      counted_as_evidence: boolean
+      state_changed: boolean
+      kp_state:
+        row_of: kp_state
+        columns: [kp_id, state, pending, pending_reason, p_mastery, evidence_count]
+    example:
+      course_id: RAG
+      version: v0.1.0
+      session_id: S01
+      kp_id: KP-RAG-003
+      page_id: PG-S01-003
+      activity_id: ACT-S01-007
+      op: answer
+      result: incorrect
+      hint_level: 1
+      duration_s: 75
+      done: true
+      item_kind: check
+      misconception: MIS-RAG-003-01
+
+  - name: get_kp_state
+    group: profile
+    callers: [tutor, workbench]
+    when: 学伴回答或出题前看学生在这些知识点上的情况
+    input:
+      type: object
+      additionalProperties: false
+      properties:
+        kp_ids: {type: array, items: *kp_id, minItems: 1, maxItems: 50, uniqueItems: true}   # 不传 = 全部
+    reads: [kp_state, kp_misconceptions]
+    output:
+      items:
+        list_of: kp_state
+        columns: all
+        extra:
+          misconceptions_active: "[{code, count, last_seen_at}]，取自 kp_misconceptions 中 status = active 的行"
+    example:
+      kp_ids: [KP-RAG-003, KP-RAG-004]
+
+  - name: list_uncertain
+    group: profile
+    callers: [tutor]
+    when: 学伴找该追问或出诊断题的知识点（state-gate：待确认时只允许诊断类动作）
+    input:
+      type: object
+      additionalProperties: false
+      properties:
+        course_id: *course_id
+        session_id: *session_id          # 只看这个课节的知识点（课节归属取本机课程包的 knowledge_points.yaml）
+        limit: {type: integer, minimum: 1, maximum: 20, default: 5}
+    reads: [kp_state]
+    effects:
+      - 返回 pending = 1 的知识点；当前课节优先，其次有效证据少的优先
+    output:
+      items:
+        list_of: kp_state
+        columns: [kp_id, state, pending_reason, evidence_count, p_mastery]
+    example:
+      course_id: RAG
+      session_id: S01
+      limit: 3
+
+  - name: get_prereq_gaps
+    group: profile
+    callers: [tutor]
+    when: 学生卡住时查是不是先修没学好，决定要不要插短补习
+    input:
+      type: object
+      additionalProperties: false
+      required: [kp_id]
+      properties:
+        kp_id: *kp_id
+        depth: {type: integer, minimum: 1, maximum: 3, default: 1}   # 沿先修关系往上查几层
+    reads: [kp_state]
+    effects:
+      - 先修关系取本机课程包的 knowledge_points.yaml；返回其中 state 为 unseen / gap 或仍待确认的知识点
+    output:
+      kp_id: string
+      gaps:
+        list_of: kp_state
+        columns: [kp_id, state, pending, p_mastery]
+        extra:
+          depth: integer，第几层先修
+    example:
+      kp_id: KP-RAG-005
+      depth: 2
+
+  - name: get_lesson_state
+    group: profile
+    callers: [tutor, workbench]
+    when: 学伴接话前看学生在这一课节学到哪、卡在哪、刚插过什么补充
+    input:
+      type: object
+      additionalProperties: false
+      required: [course_id, session_id]
+      properties:
+        course_id: *course_id
+        session_id: *session_id
+    reads: [lesson_state]
+    output:
+      lesson:
+        row_of: lesson_state
+        columns: all
+        nullable: true                    # 还没开始这一课节时为 null
+    example:
+      course_id: RAG
+      session_id: S01
+
+  - name: apply_correction
+    group: profile
+    callers: [workbench, tutor]
+    when: 学生在工作台点“我其实会了 / 我其实没懂”，或在对话里这样说（任务书 4.3 更正记录）
+    input:
+      type: object
+      additionalProperties: false
+      required: [action]
+      properties:
+        action: {type: string, enum: [open, resolve]}
+        kp_id: *kp_id
+        direction: {type: string, enum: [higher, lower]}
+        reason: {type: string, maxLength: 500}       # 只写入，不再返回给学伴
+        correction_id: {type: integer, minimum: 1}
+        probe_event_id: *event_id                     # 验证题的作答事件，先用 record_event 记好
+      allOf:
+        - if: {properties: {action: {const: open}}}
+          then: {required: [kp_id, direction]}
+        - if: {properties: {action: {const: resolve}}}
+          then: {required: [correction_id, probe_event_id]}
+    reads: [events]
+    writes: [corrections, kp_state, evidence]
+    effects:
+      - 怎样采纳或驳回见 profile-rules.yaml 的 corrections 段；lower 在 open 时直接采纳，不需要 resolve
+      - 对已结束的更正再 resolve 返回 LOCAL-409-01
+    output:
+      correction_id: integer
+      status: string                      # pending / accepted / rejected
+      probe_required: boolean             # true = 学伴需要出一道验证题
+      kp_state:
+        row_of: kp_state
+        columns: [kp_id, state, pending, pending_reason, p_mastery]
+    example:
+      action: open
+      kp_id: KP-RAG-003
+      direction: higher
+
+  # ==================== 记忆类（任务书 4.2） ====================
+  - name: add_mistake
+    group: memory
+    callers: [workbench, tutor]
+    when: 检测题、诊断题、作业批改判错时
+    input:
+      type: object
+      additionalProperties: false
+      required: [kp_id, item, stem_snapshot, judged_by, source_event_id]
+      properties:
+        kp_id: *kp_id
+        item: *item_ref
+        stem_snapshot: {type: string, minLength: 1, maxLength: 2000}
+        student_answer: {type: string, maxLength: 2000}     # 只写入，不再返回给学伴
+        answer_ref: {type: string, maxLength: 500}
+        judged_by: {type: string, enum: [auto, agent, self]}
+        misconception: *misconception
+        hint_level: *hint_level
+        source_event_id: *event_id
+    writes: [mistakes]
+    effects:
+      - 同一道题（同知识点、同题目 ID）已在错题本时不新建：wrong_count 加 1，回到第 1 盒，重新排期
+      - 新错题进第 1 盒，next_review_at 按 profile-rules.yaml 的 review.box_intervals_days 排
+    output:
+      mistake_id: integer
+      created: boolean                   # false = 已有这道题，只累加
+      wrong_count: integer
+      box: integer
+      next_review_at: string
+    example:
+      kp_id: KP-RAG-003
+      item: {activity_id: ACT-S01-007}
+      stem_snapshot: 检索增强生成中，向量检索返回的是什么？
+      student_answer: 模型生成的答案
+      answer_ref: ACT-S01-007
+      judged_by: auto
+      misconception: MIS-RAG-003-01
+      hint_level: 1
+      source_event_id: 3f2b8c1e-5a4d-4e6f-9b0a-1c2d3e4f5a6b
+
+  - name: list_due_reviews
+    group: memory
+    callers: [tutor, workbench]
+    when: 打开工作台或 warm-up 时取今天该复习的错题
+    input:
+      type: object
+      additionalProperties: false
+      properties:
+        course_id: *course_id
+        limit: {type: integer, minimum: 1, maximum: 5, default: 5}   # 上限即 profile-rules.yaml 的 review.daily_max
+    reads: [mistakes, kp_state]
+    effects:
+      - 只取 status = active 且已到期的；排序按 review.priority；今天已复习的道数计入每日上限
+    output:
+      items:
+        list_of: mistakes
+        columns: [id, kp_id, activity_id, item_hash, stem_snapshot, answer_ref, misconception, box, next_review_at]
+        extra:
+          p_mastery: number 或 null，所属知识点当前掌握概率
+      done_today: integer
+      remaining_today: integer
+    example:
+      limit: 5
+
+  - name: record_review
+    group: memory
+    callers: [tutor, workbench]
+    when: 学生做完一道复习变式题之后（先用 record_event 记作答，item_kind = review）
+    input:
+      type: object
+      additionalProperties: false
+      required: [mistake_id, event_id]
+      properties:
+        mistake_id: {type: integer, minimum: 1}
+        event_id: *event_id               # 变式题的作答事件；结果从事件里读，不另传
+    reads: [events]
+    writes: [mistakes]
+    effects:
+      - 按 profile-rules.yaml 的 review 段换盒：答对升一盒，答错回第 1 盒，第 5 盒连续答对满数标记已掌握
+    output:
+      mistake:
+        row_of: mistakes
+        columns: [id, box, box5_streak, status, next_review_at]
+    example:
+      mistake_id: 12
+      event_id: 7c9e6679-7425-40de-944b-e07fc1f90ae7
+
+  - name: add_qa
+    group: memory
+    callers: [tutor]
+    when: 每次问答结束写一条；回访后带 qa_id 更新是否解决、追问结果
+    input:
+      type: object
+      additionalProperties: false
+      properties:
+        qa_id: {type: integer, minimum: 1}             # 传了就是更新这一条
+        kp_id: *kp_id
+        page_id: *page_id
+        question_summary: {type: string, minLength: 1, maxLength: 200}   # 一句话摘要，不照抄学生原话
+        answer_summary: {type: string, maxLength: 500}
+        resolved: {type: boolean}
+        followup: *item_ref                            # 追问验证题
+        followup_result: {type: string, enum: [correct, incorrect, partial]}
+        struggle:
+          type: array
+          uniqueItems: true
+          items: {type: string, enum: [revisit, answer_change, long_stay]}
+        mistake_id: {type: integer, minimum: 1}
+      if: {not: {required: [qa_id]}}
+      then: {required: [kp_id, question_summary]}
+    writes: [qa_memory]
+    effects:
+      - question_raw 不经此工具：由工作台按本轮请求的学生原话补写
+    output:
+      qa_id: integer
+    example:
+      kp_id: KP-RAG-003
+      page_id: PG-S01-003
+      question_summary: 问向量检索为什么返回片段而不是答案
+      answer_summary: 用图书馆找书类比，检索只负责找相关片段，生成交给模型
+      resolved: false
+      struggle: [revisit]
+
+  - name: search_memory
+    group: memory
+    callers: [tutor]
+    when: 同一知识点再被问到时看历史、换讲法；找没解决的问题主动回访
+    input:
+      type: object
+      additionalProperties: false
+      properties:
+        kp_id: *kp_id
+        text: {type: string, minLength: 1, maxLength: 50}   # 在摘要里按子串匹配
+        kinds:
+          type: array
+          uniqueItems: true
+          minItems: 1
+          items: {type: string, enum: [mistakes, qa, strategies, sessions]}
+          default: [mistakes, qa]
+        unresolved_only: {type: boolean, default: false}
+        limit: {type: integer, minimum: 1, maximum: 20, default: 10}
+    reads: [mistakes, qa_memory, strategies, sessions]
+    output:
+      mistakes:
+        list_of: mistakes
+        columns: [id, kp_id, misconception, wrong_count, box, status, resolved_strategy, first_wrong_at]
+      qa:
+        list_of: qa_memory
+        columns: [id, kp_id, page_id, question_summary, answer_summary, resolved, followup_result, struggle, created_at]
+      strategies:
+        list_of: strategies
+        columns: all
+      sessions:
+        list_of: sessions
+        columns: [id, session_id, kp_ids, next_start, ended_at]
+    example:
+      kp_id: KP-RAG-003
+      kinds: [qa, strategies]
+      unresolved_only: true
+
+  - name: update_strategy
+    group: memory
+    callers: [tutor]
+    when: 学伴用某种讲法讲完时记一次 used；学生对讲法点了有用 / 没用时记 rating
+    input:
+      type: object
+      additionalProperties: false
+      required: [kp_id, kind, event]
+      properties:
+        kp_id: *kp_id
+        kind: *strategy_kind
+        event: {type: string, enum: [used, rating]}
+        rating: {type: string, enum: [up, down]}
+      if: {properties: {event: {const: rating}}}
+      then: {required: [rating]}
+    writes: [strategies]
+    effects:
+      - used：used_count 加 1，awaiting_outcome 置 1；效果不由学伴报，下一次有效作答回来时由 record_event 结算
+    output:
+      strategy:
+        row_of: strategies
+        columns: all
+    example:
+      kp_id: KP-RAG-003
+      kind: analogy
+      event: used
+
+  - name: write_session_summary
+    group: memory
+    callers: [tutor]
+    when: 每次学习结束（工作台关闭前）
+    input:
+      type: object
+      additionalProperties: false
+      required: [course_id, session_id, course_version, started_at]
+      properties:
+        course_id: *course_id
+        session_id: *session_id
+        course_version: *course_version
+        kp_ids: {type: array, items: *kp_id, maxItems: 50, uniqueItems: true}
+        stuck_summary: {type: string, maxLength: 300}
+        todo: {type: array, maxItems: 10, items: {type: string, minLength: 1, maxLength: 100}}
+        next_start:
+          type: object
+          additionalProperties: false
+          required: [page_id]
+          properties: {page_id: *page_id, activity_id: *activity_id}
+        started_at: *ts
+        ended_at: *ts
+    writes: [sessions]
+    output:
+      summary_id: integer
+    example:
+      course_id: RAG
+      session_id: S01
+      course_version: v0.1.0
+      kp_ids: [KP-RAG-003, KP-RAG-004]
+      stuck_summary: 检索与生成的分工还不清楚
+      todo: [做完 PG-S01-004 的即学即测]
+      next_start: {page_id: PG-S01-004}
+      started_at: '2026-11-27T19:00:00+08:00'
+      ended_at: '2026-11-27T19:45:00+08:00'
+
+  - name: get_session_summary
+    group: memory
+    callers: [tutor, workbench]
+    when: 打开工作台时接着上次继续
+    input:
+      type: object
+      additionalProperties: false
+      required: [course_id]
+      properties:
+        course_id: *course_id
+        session_id: *session_id           # 不传 = 这门课最近一次
+    reads: [sessions]
+    output:
+      summary:
+        row_of: sessions
+        columns: all
+        nullable: true
+    example:
+      course_id: RAG
+
+errors:
+  - code: LOCAL-422-01
+    meaning: 输入不符合 input（record_event 为 events.schema.json）
+  - code: LOCAL-404-01
+    meaning: 引用的记录不存在（mistake_id、qa_id、correction_id、event_id）
+  - code: LOCAL-409-01
+    meaning: 状态冲突，如对已结束的更正再 resolve
+  - code: LOCAL-412-01
+    meaning: learner.db 的 schema_version 与本契约不兼容，拒绝写入
