@@ -160,6 +160,127 @@ def test_event_rejects_absurd_duration():
         jsonschema.validate(dict(BASE_EVENT, op="page_enter", duration_s=3601), load_json(EVENTS))
 
 
+# ---------- 上报 report.v0.2 ----------
+
+REPORT = "contracts/report.schema.json"
+
+
+def report_sample(tier="standard"):
+    data = {
+        "schema_version": "report.v0.2",
+        "report_id": "01936b2e-6c4a-7d3e-9f10-2a3b4c5d6e70",
+        "course_id": "RAG",
+        "course_version": "v0.1.0",
+        "session_id": "S01",
+        "tier": tier,
+        "period": {"from": "2026-11-27", "to": "2026-11-27"},
+        "progress": {"pages_total": 8, "pages_done": 6,
+                     "warmup_branch": "remedial", "study_seconds": 1800},
+        "kp_stats": [{
+            "kp_id": "KP-RAG-001",
+            "state": "gap",
+            "mastery_band": "low",
+            "attempts": 4,
+            "correct_alone": 1,
+            "correct_with_hint": 2,
+            "wrong": 1,
+            "hint_level_max": 2,
+            "transfer_attempts": 1,
+            "transfer_correct": 0,
+            "misconceptions": [{"code": "MIS-RAG-001-01", "count": 2}],
+            "questions": 3,
+            "questions_open": 1,
+            "reviews_due": 2,
+            "reviews_done": 1,
+            "duration_s": 600,
+        }],
+        "content_gaps": [{"page_id": "PG-S01-001", "kp_id": "KP-RAG-001", "count": 2}],
+        "overlay_stats": {"generated": 3, "degraded_to_hint": 1},
+    }
+    if tier == "minimal":
+        data["kp_stats"] = [{"kp_id": "KP-RAG-001", "state": "gap"}]
+        data.pop("content_gaps", None)
+        data.pop("overlay_stats", None)
+    return data
+
+
+def test_report_standard_sample_matches_schema():
+    jsonschema.validate(report_sample("standard"), load_json(REPORT))
+
+
+def test_report_minimal_sample_matches_schema():
+    jsonschema.validate(report_sample("minimal"), load_json(REPORT))
+
+
+@pytest.mark.parametrize("extra", [
+    {"content_gaps": [{"page_id": "PG-S01-001", "kp_id": "KP-RAG-001", "count": 1}]},
+    {"overlay_stats": {"generated": 1, "degraded_to_hint": 0}},
+])
+def test_report_minimal_rejects_detail_groups(extra):
+    bad = report_sample("minimal")
+    bad.update(extra)
+    with pytest.raises(jsonschema.ValidationError):
+        jsonschema.validate(bad, load_json(REPORT))
+
+
+def test_report_minimal_rejects_kp_detail():
+    bad = report_sample("minimal")
+    bad["kp_stats"][0]["attempts"] = 3
+    with pytest.raises(jsonschema.ValidationError):
+        jsonschema.validate(bad, load_json(REPORT))
+
+
+@pytest.mark.parametrize("patch", [
+    {"question_text": "学生原话"},
+    {"chat_log": [{"role": "user", "text": "…"}]},
+    {"events": [{"op": "answer"}]},
+])
+def test_report_rejects_free_text_at_root(patch):
+    bad = report_sample("standard")
+    bad.update(patch)
+    with pytest.raises(jsonschema.ValidationError):
+        jsonschema.validate(bad, load_json(REPORT))
+
+
+def test_report_rejects_free_text_in_kp_stats():
+    bad = report_sample("standard")
+    bad["kp_stats"][0]["answer_text"] = "学生的回答"
+    with pytest.raises(jsonschema.ValidationError):
+        jsonschema.validate(bad, load_json(REPORT))
+
+
+def test_report_rejects_precise_mastery():
+    bad = report_sample("standard")
+    bad["kp_stats"][0]["mastery"] = 0.63
+    with pytest.raises(jsonschema.ValidationError):
+        jsonschema.validate(bad, load_json(REPORT))
+
+
+@pytest.mark.parametrize("seconds", [600, 601])
+def test_report_duration_clamp(seconds):
+    data = report_sample("standard")
+    data["kp_stats"][0]["duration_s"] = seconds
+    if seconds > 600:
+        with pytest.raises(jsonschema.ValidationError):
+            jsonschema.validate(data, load_json(REPORT))
+    else:
+        jsonschema.validate(data, load_json(REPORT))
+
+
+def test_report_requires_report_id():
+    bad = report_sample("standard")
+    bad.pop("report_id")
+    with pytest.raises(jsonschema.ValidationError):
+        jsonschema.validate(bad, load_json(REPORT))
+
+
+def test_report_requires_warmup_branch_enum():
+    bad = report_sample("standard")
+    bad["progress"]["warmup_branch"] = "先补习"
+    with pytest.raises(jsonschema.ValidationError):
+        jsonschema.validate(bad, load_json(REPORT))
+
+
 # ---------- 上下文包 v0.1 ----------
 
 def context_sample():
@@ -215,7 +336,7 @@ def test_context_activity_needs_an_id():
         jsonschema.validate(bad, load_json(CONTEXT))
 
 
-@pytest.mark.parametrize("rel", [EVENTS, CONTEXT])
+@pytest.mark.parametrize("rel", [EVENTS, CONTEXT, REPORT])
 def test_json_contracts_are_valid_and_versioned(rel):
     schema = load_json(rel)
     jsonschema.Draft7Validator.check_schema(schema)
