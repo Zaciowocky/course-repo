@@ -13,7 +13,8 @@ from collections import defaultdict
 from typing import Literal
 
 import jsonschema
-from fastapi import Depends, FastAPI, Header, HTTPException
+from fastapi import Depends, FastAPI, HTTPException
+from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from pydantic import BaseModel, Field
 
 ROOT = pathlib.Path(__file__).resolve().parents[2]
@@ -70,10 +71,13 @@ class IssueIn(BaseModel):
 
 # ---------- 鉴权 ----------
 
-def current_user(authorization: str | None = Header(default=None)) -> dict:
-    if not authorization or not authorization.startswith("Bearer "):
+bearer_scheme = HTTPBearer(auto_error=False, description="注册接口返回的 token")
+
+
+def current_user(cred: HTTPAuthorizationCredentials | None = Depends(bearer_scheme)) -> dict:
+    if cred is None or not cred.credentials:
         raise HTTPException(status_code=401, detail="AUTH-401-01 缺少 token")
-    token = authorization.removeprefix("Bearer ").strip()
+    token = cred.credentials.strip()
     record = TOKENS.get(token)
     if not record:
         raise HTTPException(status_code=401, detail="AUTH-401-01 token 无效")
@@ -81,7 +85,7 @@ def current_user(authorization: str | None = Header(default=None)) -> dict:
         raise HTTPException(status_code=401, detail="AUTH-401-03 token 已吊销")
     if record["expires_at"] < time.time():
         raise HTTPException(status_code=401, detail="AUTH-401-02 token 已过期")
-    return record
+    return {**record, "_token": token}
 
 
 def require_role(role: str):
@@ -124,9 +128,8 @@ def register(body: RegisterIn) -> dict:
 
 
 @app.post("/auth/revoke")
-def revoke(user: dict = Depends(current_user), authorization: str | None = Header(default=None)) -> dict:
-    token = authorization.removeprefix("Bearer ").strip()
-    TOKENS[token]["revoked"] = True
+def revoke(user: dict = Depends(current_user)) -> dict:
+    TOKENS[user["_token"]]["revoked"] = True
     return {"revoked": True, "student_id": user["student_id"]}
 
 
