@@ -258,6 +258,37 @@ def test_only_transfer_allows_extension():
         assert "extend_reading" not in states[name]["overlay_kinds"], f"{name} 不应允许拓展"
 
 
+# 任务书 4.2 列出的本地 MCP 工具：记忆类 8 个 + 画像类 6 个
+LOCAL_MCP_TOOLS = {
+    "add_mistake", "list_due_reviews", "record_review", "add_qa", "search_memory",
+    "update_strategy", "write_session_summary", "get_session_summary",
+    "record_event", "get_kp_state", "list_uncertain", "get_prereq_gaps",
+    "get_lesson_state", "apply_correction",
+}
+
+
+def test_gate_never_locks_local_tools():
+    """门控管“教什么”不管“记不记”：14 个本地工具任何状态都可调用。"""
+    gate = load_yaml(GATE)
+    allowed = {t for group in gate["tools_always_allowed"].values() for t in group}
+    assert allowed == LOCAL_MCP_TOOLS, f"缺 {LOCAL_MCP_TOOLS - allowed}，多 {allowed - LOCAL_MCP_TOOLS}"
+    for name, rule in gate["states"].items():
+        assert "tools" not in rule, f"{name} 不应再按状态限制工具"
+
+
+def test_gate_always_allows_answering():
+    """回答提问和四级提示是基本职责，不能被状态门控挡掉。"""
+    always = load_yaml(GATE)["actions_always_allowed"]
+    assert {"answer_question", "hint_ladder"} <= set(always)
+
+
+def test_gate_actions_do_not_overlap_always_allowed():
+    gate = load_yaml(GATE)
+    always = set(gate["actions_always_allowed"])
+    for name, rule in gate["states"].items():
+        assert not always & set(rule["actions"]), f"{name} 重复列了常驻动作"
+
+
 # ---------- 技能格式 ----------
 
 SKILL = ROOT / "skills" / "course-material-generator" / "SKILL.md"
