@@ -1,0 +1,46 @@
+version: 0.1.0
+frozen: 2026-11-27
+owner: 陈奕霖
+reviewed_by: 邢家鑫
+description: >-
+  四档状态到教学动作、到学伴可用工具的门控规则。状态如何判定见 report.schema.json 与任务书 4.3；
+  本文件规定的是「这个状态允许做什么、不允许做什么」，用来把画像从记录变成约束。
+
+states:
+  unseen:
+    label: 未接触
+    evidence: 没有任何作答证据
+    actions: [diagnose]
+    tools: [record_event, get_kp_state, get_prereq_gaps]
+    may_generate_overlay: false
+    overlay_kinds: []
+
+  gap:
+    label: 有缺口
+    evidence: 掌握概率低于 0.6，或仍在出现的误区
+    actions: [prerequisite_patch, worked_example, diagnostic_probe]
+    tools: [record_event, get_kp_state, list_uncertain, get_prereq_gaps, add_mistake, list_due_reviews]
+    may_generate_overlay: true
+    overlay_kinds: [prerequisite_patch, worked_example]
+
+  partial:
+    label: 初步掌握
+    evidence: 掌握概率不低于 0.6，且至少独立做对 1 次
+    actions: [fade_hint, variant_practice]
+    tools: [record_event, get_kp_state, list_due_reviews, add_qa, update_strategy]
+    may_generate_overlay: true
+    overlay_kinds: [variant_practice]
+
+  transfer:
+    label: 可迁移
+    evidence: 掌握概率不低于 0.95，迁移题至少独立做对 1 次，且没有仍在出现的误区
+    actions: [transfer_task, extend_reading]
+    tools: [record_event, get_kp_state, list_due_reviews, update_strategy, search_memory]
+    may_generate_overlay: true
+    overlay_kinds: [transfer_task, extend_reading]
+
+rules:
+  - 只有 transfer 允许生成「拓展阅读 / 进阶任务」类补充；gap 与 partial 不得越过当前状态。
+  - gap 状态下不得把「答案与完整讲解」作为首选动作；学生连续两次无进展才允许升级到最高提示级别。
+  - 有效证据少于 3 次时标记「待确认」：只允许诊断类动作，不得据一次作答改写掌握度。
+  - 未被本文件列出的工具不得在对应状态下调用；调用失败应降级为提示，并在日志里记一次越界。

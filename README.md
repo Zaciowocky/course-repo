@@ -12,7 +12,8 @@
 | `course/knowledge/notes/` | 来源摘录与核验笔记 | 内容负责人 |
 | `materials/` | 生成的 HTML 课件、实验、练习 | Codex（经 PR） |
 | `overlay/` | 个性化补充（模板与样例，实际内容在学生本地） | 学伴 |
-| `tools/` | 校验与制作脚本 | 平台负责人 |
+| `tools/` | 校验与制作脚本（含审计链 `trace.py`） | 平台负责人 |
+| `skills/` | Agent-Skills 格式的制作技能 | 邢家鑫 |
 | `contracts/` | 接口与数据契约（ID、schema、MCP 工具） | 邢家鑫主评审 |
 | `docs/` | 数据契约、协作流程、变更说明 | 全体 |
 
