@@ -1,6 +1,8 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
   "title": "学习事件",
+  "version": "0.2.0",
+  "description": "工作台写入本地 learner.db 事件表（只追加）的一条记录。只含 ID、枚举、数字和时间，不含任何自由文本；逐条事件不出学生电脑（任务书 4.4）。v0.2 对 v0.1 只增不改：新增字段全部可选，v0.1 的事件照样合法。",
   "type": "object",
   "required": [
     "course_id",
@@ -10,21 +12,26 @@
   ],
   "properties": {
     "course_id": {
-      "type": "string"
+      "type": "string",
+      "description": "课程 ID，如 RAG。"
     },
     "version": {
-      "type": "string"
+      "type": "string",
+      "description": "学生当前固定的课程版本（tag），如 v0.1.0。"
     },
     "kp_id": {
       "type": "string",
-      "pattern": "^KP-[A-Z]{3,4}-[0-9]{3}$"
+      "pattern": "^KP-[A-Z]{3,4}-[0-9]{3}$",
+      "description": "知识点 ID，全流程主键。"
     },
     "page_id": {
       "type": "string",
-      "pattern": "^PG-S[0-9]{2}-[0-9]{3}$"
+      "pattern": "^PG-S[0-9]{2}-[0-9]{3}$",
+      "description": "页面 ID。"
     },
     "activity_id": {
-      "type": "string"
+      "type": "string",
+      "description": "课件里的活动或题目 ID，如 ACT-S01-001。op=answer 时应带 activity_id 或 item_hash（为兼容 v0.1 不做强制）；op=answer_change 时二者必须有一个。"
     },
     "op": {
       "enum": [
@@ -32,8 +39,12 @@
         "page_leave",
         "interact",
         "answer",
-        "hint"
-      ]
+        "hint",
+        "ask",
+        "revisit",
+        "answer_change"
+      ],
+      "description": "操作类型。v0.2 新增三种“纠结信号”：ask 向学伴提问（只计次数，问题原文只进问答记忆）、revisit 回跳到看过的页面（必须带 page_id）、answer_change 提交前改答案（必须带 activity_id 或 item_hash）。消费者遇到未识别的 op 须忽略并计数，见 contracts/README.md。"
     },
     "result": {
       "enum": [
@@ -41,21 +52,134 @@
         "incorrect",
         "partial",
         "none"
-      ]
+      ],
+      "description": "判定结果，op=answer 时填。"
     },
     "hint_level": {
       "type": "integer",
       "minimum": 0,
-      "maximum": 4
+      "maximum": 4,
+      "description": "提示层级：0 未用提示，1 定位，2 概念，3 步骤，4 答案讲解。op=answer 时填这道题作答前用到的最高级别：0 记为独立做对，1 及以上记为提示后做对。"
     },
     "duration_s": {
       "type": "integer",
       "minimum": 0,
-      "maximum": 600
+      "maximum": 3600,
+      "description": "用时（秒）。本地事件保留真实时长，上限 3600，超出由写入方截断为 3600（v0.1 为 600，v0.2 只放宽，旧事件仍合法）。上报时的统计口径由 report.schema.json 规定，不在本契约里定。op=page_leave 时为本页停留时长，用来判断“超时停留”。"
     },
     "done": {
-      "type": "boolean"
+      "type": "boolean",
+      "description": "该页面或活动是否完成。"
+    },
+    "event_id": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$",
+      "description": "v0.2 新增。事件唯一 ID，小写 UUID，建议 UUIDv7（按时间有序）。为兼容 v0.1，本 schema 中可选；写入 learner.db 事件表时由写入方补齐，表里每一行都有。证据表的“来源事件 ID 列表”引用它。"
+    },
+    "ts": {
+      "type": "string",
+      "format": "date-time",
+      "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}(\\.[0-9]+)?(Z|[+-][0-9]{2}:[0-9]{2})$",
+      "description": "v0.2 新增。事件发生时间，ISO 8601 带时区，如 2026-11-27T14:03:05+08:00。为兼容 v0.1，本 schema 中可选；写入 learner.db 事件表时由写入方补齐（没带就取写入时刻），表里每一行都有。用于 pyBKT 作答顺序、遗忘模型和错题“首次出错时间”；精确时间戳不上报。"
+    },
+    "session_id": {
+      "type": "string",
+      "pattern": "^S[0-9]{2}$",
+      "description": "v0.2 新增。课节 ID，如 S01（指课节，不是登录会话）。warm-up、复习等没有页面的事件靠它归到课节画像。"
+    },
+    "item_kind": {
+      "enum": [
+        "check",
+        "homework",
+        "diagnostic",
+        "followup",
+        "review"
+      ],
+      "description": "v0.2 新增。题目类型，对应证据表的证据类型：check 检测题、homework 作业、diagnostic 诊断题（含 warm-up）、followup 追问验证题、review 错题复习。"
+    },
+    "is_transfer": {
+      "type": "boolean",
+      "description": "v0.2 新增。是否迁移题。“可迁移”一档要求迁移题至少独立做对 1 次。"
+    },
+    "item_hash": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{16}$",
+      "description": "v0.2 新增。学伴自己出的题（复习变式题、追问验证题）没有活动 ID，用题目内容 SHA-256 的前 16 位十六进制标识，与错题本的题目 ID 一致。"
+    },
+    "misconception": {
+      "type": "string",
+      "pattern": "^(MIS-[A-Z]{3,4}-[0-9]{3}-[0-9]{2}|other)$",
+      "description": "v0.2 新增。判错时命中的误区编码，只能从 knowledge_points.yaml 登记的编码里选，选不到填 other。只能出现在 op=answer 且 result 为 incorrect 或 partial 的事件上。"
     }
   },
-  "additionalProperties": false
+  "additionalProperties": false,
+  "allOf": [
+    {
+      "if": {
+        "required": [
+          "misconception"
+        ]
+      },
+      "then": {
+        "required": [
+          "op",
+          "result"
+        ],
+        "properties": {
+          "op": {
+            "const": "answer"
+          },
+          "result": {
+            "enum": [
+              "incorrect",
+              "partial"
+            ]
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "required": [
+          "op"
+        ],
+        "properties": {
+          "op": {
+            "const": "revisit"
+          }
+        }
+      },
+      "then": {
+        "required": [
+          "page_id"
+        ]
+      }
+    },
+    {
+      "if": {
+        "required": [
+          "op"
+        ],
+        "properties": {
+          "op": {
+            "const": "answer_change"
+          }
+        }
+      },
+      "then": {
+        "anyOf": [
+          {
+            "required": [
+              "activity_id"
+            ]
+          },
+          {
+            "required": [
+              "item_hash"
+            ]
+          }
+        ]
+      }
+    }
+  ]
 }
