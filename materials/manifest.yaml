@@ -1,3 +1,67 @@
+# 由 tools/build_manifest.py 扫描生成，请勿手写；改动请改页面后重新生成
 version: 0.1.0
-# 页面清单；由检查脚本扫描页面 data-kp / data-node-id 反向生成，不手写
-pages: []
+pages:
+- id: PG-S01-001
+  file: materials/S01/pg-001.html
+  kp: KP-RAG-001
+  title: PG-S01-001 检索增强生成的基本结构
+  slots:
+  - NODE-S01-001
+  - NODE-S01-002
+  - NODE-S01-003
+- id: PG-S01-002
+  file: materials/S01/pg-002.html
+  kp: KP-RAG-002
+  title: PG-S01-002 检索结果与生成内容的衔接
+  slots:
+  - NODE-S01-004
+  - NODE-S01-005
+  - NODE-S01-006
+- id: PG-S01-003
+  file: materials/S01/pg-003.html
+  kp: KP-RAG-003
+  title: PG-S01-003 查询编码与向量相似度
+  slots:
+  - NODE-S01-007
+  - NODE-S01-008
+  - NODE-S01-009
+- id: PG-S01-004
+  file: materials/S01/pg-004.html
+  kp: KP-RAG-004
+  title: PG-S01-004 检索策略与 top-k 取舍
+  slots:
+  - NODE-S01-010
+  - NODE-S01-011
+  - NODE-S01-012
+- id: PG-S02-001
+  file: materials/S02/pg-001.html
+  kp: KP-RAG-005
+  title: PG-S02-001 上下文组装与提示组织
+  slots:
+  - NODE-S02-001
+  - NODE-S02-002
+  - NODE-S02-003
+- id: PG-S02-002
+  file: materials/S02/pg-002.html
+  kp: KP-RAG-006
+  title: PG-S02-002 生成有据：引用与事实核查
+  slots:
+  - NODE-S02-004
+  - NODE-S02-005
+  - NODE-S02-006
+- id: PG-S02-003
+  file: materials/S02/pg-003.html
+  kp: KP-RAG-007
+  title: PG-S02-003 RAG 系统的效果评价
+  slots:
+  - NODE-S02-007
+  - NODE-S02-008
+  - NODE-S02-009
+- id: PG-S02-004
+  file: materials/S02/pg-004.html
+  kp: KP-RAG-008
+  title: PG-S02-004 动手：搭建最小 RAG 流程
+  slots:
+  - NODE-S02-010
+  - NODE-S02-011
+  - NODE-S02-012

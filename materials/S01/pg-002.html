@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>PG-S01-002 检索结果与生成内容的衔接</title>
+<style>
+:root{--ink:#1f2933;--line:#d7dee6;--brand:#2563eb;--ok:#15803d;--bad:#b91c1c;--bg:#f8fafc}
+*{box-sizing:border-box}
+body{margin:0;font-family:"Segoe UI","Microsoft YaHei",sans-serif;color:var(--ink);background:var(--bg);line-height:1.7}
+header{background:#0f2740;color:#dbe7f3;padding:14px 22px;font-size:13px}
+header b{color:#7dd3fc}
+main{max-width:860px;margin:0 auto;padding:24px 22px 60px}
+section{background:#fff;border:1px solid var(--line);border-radius:10px;padding:18px 22px;margin:16px 0}
+h1{font-size:22px;margin:4px 0 0;color:#0f2740}
+h2{font-size:17px;margin:0 0 10px;color:#0f2740}
+.meta{font-size:13px;color:#64748b}
+code{background:#eef2f7;padding:1px 5px;border-radius:4px;font-size:13px}
+button{background:var(--brand);color:#fff;border:0;border-radius:6px;padding:7px 14px;cursor:pointer;font-size:14px}
+button.ghost{background:#fff;color:var(--brand);border:1px solid var(--brand)}
+.doc{border-left:4px solid var(--brand);background:#f8fafc;padding:8px 12px;margin:8px 0;font-size:14px}
+.claim{border-bottom:2px dotted var(--brand);cursor:pointer;padding:2px}
+.claim.ok{border-color:var(--ok);background:#dcfce7}
+.claim.bad{border-color:var(--bad);background:#fee2e2}
+.ok{color:var(--ok);font-weight:600}.bad{color:var(--bad);font-weight:600}
+details{background:#f1f5f9;border-radius:6px;padding:8px 12px;margin-top:10px}
+.feedback{margin-top:10px;font-weight:600}
+</style>
+</head>
+<body data-kp="KP-RAG-002">
+<!-- pg: PG-S01-002 kp: KP-RAG-002 -->
+<header>
+  课程 <b>RAG</b> · 课节 <b>S01</b> · 知识点 <b>KP-RAG-002</b> · 页面 <b>PG-S01-002</b><br>
+  来源依据：<b>SRC-001</b>（RAG 原始论文）、<b>SRC-005</b>（Lost in the Middle） · 先修：KP-RAG-001
+</header>
+<main>
+<h1>检索结果与生成内容的衔接</h1>
+<p class="meta">对应知识点：KP-RAG-002（必修 · 进阶）｜教学目标：判断生成内容是否落在检索材料范围内，知道检索内容可能被忽略。</p>
+
+<section data-node-id="NODE-S01-004">
+  <h2>一、概念：检索到 ≠ 用得上 ≠ 答得对</h2>
+  <p>检索器返回的片段与问题<strong>相关</strong>，不代表其中的说法<strong>正确</strong>（相关性 ≠ 正确性）。
+  反过来，片段即使正确，也可能没被生成器真正使用：实验发现，当关键信息落在长上下文的中段时，
+  模型对它的利用率明显低于开头和结尾，即“中间丢失”现象（SRC-005）。</p>
+  <p>因此，一条可信的回答要求：<strong>每个结论都能在检索到的材料里找到出处</strong>。
+  找不到出处的结论，要么来自模型参数记忆（不可回查），要么是编造。</p>
+</section>
+
+<section data-node-id="NODE-S01-005">
+  <h2>二、交互：给这段回答做“回查”</h2>
+  <p class="meta">判断什么：回答里每个结论是否有检索材料支撑；能改什么：点击下划线结论，在“有依据 / 无依据”间切换；观察什么：材料框与判定反馈；独立验证：全部判对后完成下方即学即测。</p>
+  <p><strong>检索到的材料（假设只有这两段）</strong>：</p>
+  <div class="doc">材料①：RAG 把查询编码为向量，用最大内积检索取出若干文档，再由生成模型在给定文档的条件下产出答案。（SRC-001）</div>
+  <div class="doc">材料②：实验表明，关键信息位于上下文开头或结尾时利用率较高，位于中段时显著下降。（SRC-005）</div>
+  <p><strong>待核查的回答</strong>（点击三个下划线结论进行判定）：</p>
+  <p style="background:#fffdf5;border:1px solid #f0e6c8;border-radius:8px;padding:12px">
+    RAG 先用向量检索文档，
+    <span class="claim" data-truth="1">检索之后由生成模型在这些文档的条件下产出回答</span>；
+    而且<span class="claim" data-truth="0">只要文档被检索到，模型就一定会使用它</span>；
+    另外<span class="claim" data-truth="0">RAG 是 2024 年才提出的新技术</span>。
+  </p>
+  <p class="meta">点击结论在“有依据（绿）/ 无依据（红）”之间切换，判完点下方按钮。</p>
+  <button onclick="grade()">提交判定</button>
+  <button class="ghost" onclick="resetClaims()">重置</button>
+  <div class="feedback" id="claimFb"></div>
+</section>
+
+<section data-node-id="NODE-S01-006">
+  <h2>三、即学即测（ACT-S01-002）</h2>
+  <p><strong>题目</strong>：检索器返回了一篇与问题高度相关、但内容本身有误的文档，生成器照它作答。
+  这个失败最准确的描述是？</p>
+  <div id="quiz"></div>
+  <div class="feedback" id="quizFb"></div>
+  <details>
+    <summary>答案要点与解析</summary>
+    <p><strong>答案</strong>：C。</p>
+    <p><strong>要点</strong>：检索只保证相关、不保证正确（SRC-001 的链路里没有任何一步验证内容真伪）；
+    所以课程的每条结论都要求能回查权威来源。</p>
+    <p><strong>易错点</strong>：选 A 对应误区 <code>MIS-RAG-002-01</code>（把相关性当成正确性）；
+    选 D 对应误区 <code>MIS-RAG-002-02</code>（认为拼进上下文的内容一定会被使用，见 SRC-005 的中间丢失）。</p>
+  </details>
+</section>
+</main>
+
+<script>
+const claims=document.querySelectorAll('.claim');
+claims.forEach(c=>c.onclick=()=>{
+  if(!c.classList.contains('ok')&&!c.classList.contains('bad')){c.classList.add('ok');c.title='有依据';}
+  else if(c.classList.contains('ok')){c.classList.remove('ok');c.classList.add('bad');c.title='无依据';}
+  else{c.classList.remove('bad');c.title='';}
+});
+function grade(){let done=true,right=0;
+  claims.forEach(c=>{const judged=c.classList.contains('ok')||c.classList.contains('bad');
+    if(!judged)done=false;
+    const sayYes=c.classList.contains('ok');
+    if(judged&&sayYes===(c.dataset.truth==='1'))right++;});
+  const fb=document.getElementById('claimFb');
+  if(!done){fb.className='feedback bad';fb.textContent='还有结论没有判定，每个都要点一下。';return;}
+  fb.className='feedback '+(right===3?'ok':'bad');
+  fb.textContent=right===3?'✓ 三个结论全部判对：①有材料支撑；②与“中间丢失”结论相反；③材料里根本没有年份信息，属于无依据。'
+    :'✗ 判对了 '+right+'/3。提示：对照两段材料逐句找出处，找不到出处就是“无依据”。';}
+function resetClaims(){claims.forEach(c=>{c.classList.remove('ok','bad');c.title='';});
+  document.getElementById('claimFb').textContent='';}
+const quiz={opts:[
+ 'A. 检索器出了问题：相关的文档不可能有错',
+ 'B. 生成器出了问题：它不该使用检索到的文档',
+ 'C. 检索只保证相关、不保证正确；回答出错的根源是材料本身有误，需靠来源回查发现',
+ 'D. 不算失败：只要检索到了，回答就一定有依据'],ans:2};
+const qz=document.getElementById('quiz'),qfb=document.getElementById('quizFb');
+quiz.opts.forEach((o,i)=>{const b=document.createElement('button');b.className='ghost';
+  b.style.display='block';b.style.margin='6px 0';b.style.textAlign='left';b.textContent=o;
+  b.onclick=()=>{qfb.className='feedback '+(i===quiz.ans?'ok':'bad');
+    qfb.textContent=i===quiz.ans?'✓ 回答正确':'✗ 再想想，可点开下方解析对照误区编码';};
+  qz.appendChild(b);});
+</script>
+</body>
+</html>

@@ -62,6 +62,20 @@ kps_doc = load("course/knowledge/knowledge_points.yaml")
 sources_doc = load("course/knowledge/sources.yaml")
 manifest = load("materials/manifest.yaml")
 
+# manifest 防漂移：与页面实际扫描结果比对，不一致要求重新生成（契约：不手写）
+try:
+    sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent))
+    from build_manifest import scan_pages
+    scanned = scan_pages()
+    current = (manifest or {}).get("pages") or []
+    normalize = lambda ps: [{k: p.get(k) for k in ("id", "file", "kp", "title", "slots")}
+                            for p in ps]
+    if normalize(current) != normalize(scanned):
+        errors.append("manifest.yaml 与页面实际内容不一致："
+                      "请运行 python tools/build_manifest.py 重新生成")
+except Exception as exc:
+    warnings.append(f"manifest 扫描比对跳过：{exc}")
+
 kps = (kps_doc or {}).get("knowledge_points", [])
 sources = (sources_doc or {}).get("sources", [])
 pages = (manifest or {}).get("pages", [])

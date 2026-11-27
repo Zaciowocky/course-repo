@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>PG-S01-003 查询编码与向量相似度</title>
+<style>
+:root{--ink:#1f2933;--line:#d7dee6;--brand:#2563eb;--ok:#15803d;--bad:#b91c1c;--bg:#f8fafc}
+*{box-sizing:border-box}
+body{margin:0;font-family:"Segoe UI","Microsoft YaHei",sans-serif;color:var(--ink);background:var(--bg);line-height:1.7}
+header{background:#0f2740;color:#dbe7f3;padding:14px 22px;font-size:13px}
+header b{color:#7dd3fc}
+main{max-width:860px;margin:0 auto;padding:24px 22px 60px}
+section{background:#fff;border:1px solid var(--line);border-radius:10px;padding:18px 22px;margin:16px 0}
+h1{font-size:22px;margin:4px 0 0;color:#0f2740}
+h2{font-size:17px;margin:0 0 10px;color:#0f2740}
+.meta{font-size:13px;color:#64748b}
+code{background:#eef2f7;padding:1px 5px;border-radius:4px;font-size:13px}
+button{background:var(--brand);color:#fff;border:0;border-radius:6px;padding:7px 14px;cursor:pointer;font-size:14px}
+button.ghost{background:#fff;color:var(--brand);border:1px solid var(--brand)}
+table{border-collapse:collapse;width:100%;font-size:14px;margin:10px 0}
+td,th{border:1px solid var(--line);padding:6px 10px;text-align:left}
+tr.top{background:#dcfce7}
+input[type=range]{width:220px}
+.ok{color:var(--ok);font-weight:600}.bad{color:var(--bad);font-weight:600}
+details{background:#f1f5f9;border-radius:6px;padding:8px 12px;margin-top:10px}
+.feedback{margin-top:10px;font-weight:600}
+</style>
+</head>
+<body data-kp="KP-RAG-003">
+<!-- pg: PG-S01-003 kp: KP-RAG-003 -->
+<header>
+  课程 <b>RAG</b> · 课节 <b>S01</b> · 知识点 <b>KP-RAG-003</b> · 页面 <b>PG-S01-003</b><br>
+  来源依据：<b>SRC-004</b>（Sentence-BERT）、<b>SRC-003</b>（RAG 综述） · 先修：KP-RAG-001
+</header>
+<main>
+<h1>查询编码与向量相似度</h1>
+<p class="meta">对应知识点：KP-RAG-003（必修 · 进阶）｜教学目标：说清文本如何编码为向量、相似度如何计算。</p>
+
+<section data-node-id="NODE-S01-007">
+  <h2>一、概念：文本怎么变成可比对的数字</h2>
+  <p>编码器（如 Sentence-BERT，SRC-004）把一段文本映射为一个<strong>向量</strong>：语义相近的文本，向量方向相近。
+  检索时用<strong>余弦相似度</strong>衡量方向接近程度：</p>
+  <p style="text-align:center"><code>cos(q, d) = (q · d) / (|q| × |d|)</code>，取值范围 <code>[-1, 1]</code></p>
+  <p>注意两件事：余弦相似度<strong>可以取负值</strong>（方向相反，语义相反），不是 0 到 1；
+  相似度<strong>高只表示语义相近，不表示语义完全相同</strong>——“猫追狗”和“狗追猫”的向量可能很接近（SRC-004、SRC-003）。</p>
+</section>
+
+<section data-node-id="NODE-S01-008">
+  <h2>二、交互：拖动查询向量，看检索排序怎么变</h2>
+  <p class="meta">判断什么：查询向量靠近哪篇文档；能改什么：查询向量的 x、y 分量；观察什么：相似度表与最高亮文档；独立验证：让指定文档成为 top-1。</p>
+  <p>三篇文档已被编码成二维向量（真实系统通常是几百维，这里降维演示）：</p>
+  <table>
+    <tr><th>文档</th><th>内容</th><th>向量</th></tr>
+    <tr><td>D1</td><td>“RAG 先检索再生成”</td><td><code>(0.9, 0.2)</code></td></tr>
+    <tr><td>D2</td><td>“向量检索按相似度排序”</td><td><code>(0.7, 0.6)</code></td></tr>
+    <tr><td>D3</td><td>“番茄炒蛋先放番茄”</td><td><code>(-0.6, 0.5)</code></td></tr>
+  </table>
+  <p>查询向量 q：x = <input type="range" id="qx" min="-1" max="1" step="0.05" value="0.8">
+  <span id="qxv">0.80</span>；y = <input type="range" id="qy" min="-1" max="1" step="0.05" value="0.3">
+  <span id="qyv">0.30</span></p>
+  <table id="simTable">
+    <tr><th>文档</th><th>余弦相似度</th><th>排名</th></tr>
+  </table>
+  <p><strong>挑战</strong>：调整 x、y，让 D3（番茄炒蛋）成为 top-1，观察相似度出现了什么符号变化。</p>
+  <div class="feedback" id="simFb"></div>
+</section>
+
+<section data-node-id="NODE-S01-009">
+  <h2>三、即学即测（ACT-S01-003）</h2>
+  <p><strong>题目</strong>：q = (1, 0)，d₁ = (0, 1)，d₂ = (−1, 0)。余弦相似度 cos(q, d₁) 与 cos(q, d₂) 分别是多少？</p>
+  <div id="quiz"></div>
+  <div class="feedback" id="quizFb"></div>
+  <details>
+    <summary>答案要点与解析</summary>
+    <p><strong>答案</strong>：B。</p>
+    <p><strong>要点</strong>：cos(q, d₁) = (1×0+0×1)/(1×1) = 0（垂直，无关）；cos(q, d₂) = −1（方向相反）。
+    余弦相似度取值 [−1, 1]。</p>
+    <p><strong>易错点</strong>：选 A 对应误区 <code>MIS-RAG-003-02</code>（以为取值范围是 0 到 1）；
+    认为“相似度高就是同一个意思”对应误区 <code>MIS-RAG-003-01</code>。</p>
+  </details>
+</section>
+</main>
+
+<script>
+const docs=[{n:'D1',v:[0.9,0.2]},{n:'D2',v:[0.7,0.6]},{n:'D3',v:[-0.6,0.5]}];
+function cos(a,b){const dot=a[0]*b[0]+a[1]*b[1],na=Math.hypot(a[0],a[1]),nb=Math.hypot(b[0],b[1]);
+  return na&&nb?dot/(na*nb):0;}
+function update(){
+  const qx=+document.getElementById('qx').value,qy=+document.getElementById('qy').value;
+  document.getElementById('qxv').textContent=qx.toFixed(2);
+  document.getElementById('qyv').textContent=qy.toFixed(2);
+  const sims=docs.map(d=>({n:d.n,s:cos([qx,qy],d.v)})).sort((a,b)=>b.s-a.s);
+  const t=document.getElementById('simTable');
+  t.innerHTML='<tr><th>文档</th><th>余弦相似度</th><th>排名</th></tr>';
+  sims.forEach((r,i)=>{const tr=document.createElement('tr');if(i===0)tr.className='top';
+    tr.innerHTML='<td>'+r.n+'</td><td>'+r.s.toFixed(3)+'</td><td>'+(i+1)+'</td>';t.appendChild(tr);});
+  document.getElementById('simFb').textContent =
+    sims[0].n==='D3'?'✓ D3 成为 top-1！注意它与 q 的相似度为正，而 D1/D2 可能为负——方向相反时相似度小于 0。':'';
+}
+document.getElementById('qx').oninput=update;
+document.getElementById('qy').oninput=update;
+update();
+const quiz={opts:[
+ 'A. 0 和 0',
+ 'B. 0 和 −1',
+ 'C. 1 和 0',
+ 'D. 0.5 和 −0.5'],ans:1};
+const qz=document.getElementById('quiz'),qfb=document.getElementById('quizFb');
+quiz.opts.forEach((o,i)=>{const b=document.createElement('button');b.className='ghost';
+  b.style.display='block';b.style.margin='6px 0';b.style.textAlign='left';b.textContent=o;
+  b.onclick=()=>{qfb.className='feedback '+(i===quiz.ans?'ok':'bad');
+    qfb.textContent=i===quiz.ans?'✓ 回答正确':'✗ 再想想：代入公式 cos(q,d)=(q·d)/(|q||d|) 手算一遍';};
+  qz.appendChild(b);});
+</script>
+</body>
+</html>

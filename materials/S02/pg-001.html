@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>PG-S02-001 上下文组装与提示组织</title>
+<style>
+:root{--ink:#1f2933;--line:#d7dee6;--brand:#2563eb;--ok:#15803d;--bad:#b91c1c;--bg:#f8fafc}
+*{box-sizing:border-box}
+body{margin:0;font-family:"Segoe UI","Microsoft YaHei",sans-serif;color:var(--ink);background:var(--bg);line-height:1.7}
+header{background:#0f2740;color:#dbe7f3;padding:14px 22px;font-size:13px}
+header b{color:#7dd3fc}
+main{max-width:860px;margin:0 auto;padding:24px 22px 60px}
+section{background:#fff;border:1px solid var(--line);border-radius:10px;padding:18px 22px;margin:16px 0}
+h1{font-size:22px;margin:4px 0 0;color:#0f2740}
+h2{font-size:17px;margin:0 0 10px;color:#0f2740}
+.meta{font-size:13px;color:#64748b}
+code{background:#eef2f7;padding:1px 5px;border-radius:4px;font-size:13px}
+button{background:#fff;color:var(--brand);border:1px solid var(--brand);border-radius:6px;padding:7px 14px;cursor:pointer;font-size:14px;display:block;margin:6px 0;text-align:left}
+.bar{height:22px;background:#eef2f7;border-radius:11px;overflow:hidden;margin:8px 0}
+.bar>div{height:100%;background:var(--ok);transition:width .2s}
+.bar.over>div{background:var(--bad)}
+.frag{border:1px solid var(--line);border-radius:8px;padding:8px 12px;margin:6px 0;cursor:pointer}
+.frag.sel{border-color:var(--brand);background:#eff6ff}
+.ok{color:var(--ok);font-weight:600}.bad{color:var(--bad);font-weight:600}
+details{background:#f1f5f9;border-radius:6px;padding:8px 12px;margin-top:10px}
+.feedback{margin-top:10px;font-weight:600}
+</style>
+</head>
+<body data-kp="KP-RAG-005">
+<!-- pg: PG-S02-001 kp: KP-RAG-005 -->
+<header>
+  课程 <b>RAG</b> · 课节 <b>S02</b> · 知识点 <b>KP-RAG-005</b> · 页面 <b>PG-S02-001</b><br>
+  来源依据：<b>SRC-005</b>（Lost in the Middle）、<b>SRC-002</b>（课程讲义） · 先修：KP-RAG-002
+</header>
+<main>
+<h1>上下文组装与提示组织</h1>
+<p class="meta">对应知识点：KP-RAG-005（必修 · 进阶）｜教学目标：说清提示词的组织方式，知道长度限制与中间丢失。</p>
+
+<section data-node-id="NODE-S02-001">
+  <h2>一、概念：提示词是一份有预算的装配单</h2>
+  一个典型的 RAG 提示词 = <strong>指令</strong>（告诉模型怎么答）+ <strong>检索片段</strong>（依据材料）+ <strong>问题</strong>。
+  模型的上下文窗口是有限的，装不下就要取舍；而且片段放在什么位置会影响它被使用的概率：
+  开头和结尾的利用率高，<strong>中段的利用率显著下降</strong>（中间丢失，SRC-005）。</p>
+  <p>所以组装策略不是“全塞进去”，而是：最重要的片段放在首尾、控制总长度、必要时做摘要压缩（SRC-002）。</p>
+</section>
+
+<section data-node-id="NODE-S02-002">
+  <h2>二、交互：在 100 token 预算内组装提示词</h2>
+  <p class="meta">判断什么：哪些片段值得放进上下文；能改什么：勾选片段、给片段排序；观察什么：预算条与位置提示；独立验证：不超预算且保住关键片段。</p>
+  <p>固定项：指令（20 token）+ 问题（10 token）。检索片段（每片 30 token，点击选中/取消）：</p>
+  <div class="frag sel" data-tok="30" data-key="1">片段A：直接回答问题的定义（关键）</div>
+  <div class="frag sel" data-tok="30" data-key="0">片段B：话题相关但不回答问题</div>
+  <div class="frag sel" data-tok="30" data-key="0">片段C：相似度擦边的噪声片段</div>
+  <div class="bar" id="bar"><div id="fill" style="width:0%"></div></div>
+  <p class="meta">预算 100 token，当前：<strong id="used">0</strong> token</p>
+  <p><strong>追问</strong>：如果只保留片段A，把它放在上下文的哪个位置被模型用到的概率最低？</p>
+  <div id="posQuiz"></div>
+  <div class="feedback" id="posFb"></div>
+</section>
+
+<section data-node-id="NODE-S02-003">
+  <h2>三、即学即测（ACT-S02-001）</h2>
+  <p><strong>题目</strong>：检索到了 5 段材料，上下文预算只够放 2 段。最合理的做法是？</p>
+  <div id="quiz"></div>
+  <div class="feedback" id="quizFb"></div>
+  <details>
+    <summary>答案要点与解析</summary>
+    <p><strong>答案</strong>：C。</p>
+    <p><strong>要点</strong>：按相关性与对回答问题的贡献挑选 2 段，并放在开头或结尾等利用率高的位置（SRC-005）；
+    塞不下就硬塞会超出窗口被截断，反而可能丢掉问题或指令。</p>
+    <p><strong>易错点</strong>：选 A 对应误区 <code>MIS-RAG-005-01</code>（认为上下文越长越好）；
+    认为“位置无所谓”对应误区 <code>MIS-RAG-005-02</code>。</p>
+  </details>
+</section>
+</main>
+
+<script>
+const frags=document.querySelectorAll('.frag'),used=document.getElementById('used'),
+bar=document.getElementById('bar'),fill=document.getElementById('fill');
+function update(){let t=30;let keyIn=false;
+  frags.forEach(f=>{if(f.classList.contains('sel')){t+=+f.dataset.tok;if(f.dataset.key==='1')keyIn=true;}});
+  used.textContent=t;fill.style.width=Math.min(t,100)+'%';
+  bar.classList.toggle('over',t>100);}
+frags.forEach(f=>f.onclick=()=>{f.classList.toggle('sel');update();});
+update();
+const pos={opts:['A. 开头','B. 正中间','C. 结尾'],ans:1,
+fb:['开头利用率高（SRC-005）。','✓ 正确：中段利用率最低，关键片段放中间最容易被“丢失”。','结尾利用率高（SRC-005）。']};
+const pq=document.getElementById('posQuiz'),pfb=document.getElementById('posFb');
+pos.opts.forEach((o,i)=>{const b=document.createElement('button');b.textContent=o;
+  b.onclick=()=>{pfb.className='feedback '+(i===pos.ans?'ok':'bad');pfb.textContent=pos.fb[i];};
+  posQuiz.appendChild(b);});
+const quiz={opts:[
+ 'A. 全部塞进去，模型自己会挑重点',
+ 'B. 随机选 2 段',
+ 'C. 按相关性和对问题的贡献选 2 段，放在开头或结尾',
+ 'D. 只放问题，不放材料'],ans:2};
+const qz=document.getElementById('quiz'),qfb=document.getElementById('quizFb');
+quiz.opts.forEach((o,i)=>{const b=document.createElement('button');b.textContent=o;
+  b.onclick=()=>{qfb.className='feedback '+(i===quiz.ans?'ok':'bad');
+    qfb.textContent=i===quiz.ans?'✓ 回答正确':'✗ 再想想：预算有限时的取舍原则与位置策略';};
+  qz.appendChild(b);});
+</script>
+</body>
+</html>

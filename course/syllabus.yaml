@@ -1,17 +1,22 @@
-version: 0.1.0
+version: 0.2.0
 course:
   id: RAG
   title: 检索增强生成入门
-  version: 0.1.0
+  version: 0.2.0
   semester: 2026-autumn
   objectives:
     - 能说明检索与生成各自负责什么
+    - 能画出查询编码、检索、组装、生成、引用的完整链路
     - 能判断一条回答是否有可回查的依据
+    - 能搭建并评价一个最小 RAG 流程
   scope:
-    include: [检索增强生成的基本结构, 检索与生成的衔接]
-    exclude: [模型训练细节, 向量数据库运维]
+    include: [检索增强生成的基本结构, 检索与生成的衔接, 向量检索与相似度, 上下文组装, 引用与事实核查, 效果评价, 最小动手实验]
+    exclude: [模型训练细节, 向量数据库运维, 生产级工程优化]
 
 sessions:
   - id: S01
-    title: 检索增强生成的基本结构
-    knowledge_points: [KP-RAG-001, KP-RAG-002]
+    title: 检索增强生成的基本结构与检索侧
+    knowledge_points: [KP-RAG-001, KP-RAG-002, KP-RAG-003, KP-RAG-004]
+  - id: S02
+    title: 生成侧、评价与动手实验
+    knowledge_points: [KP-RAG-005, KP-RAG-006, KP-RAG-007, KP-RAG-008]
