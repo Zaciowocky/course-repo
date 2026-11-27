@@ -49,7 +49,7 @@ details{background:#f1f5f9;border-radius:6px;padding:8px 12px;margin-top:10px}
 
 <section data-node-id="NODE-S01-011">
   <h2>二、交互：调一调 k，看召回与噪声怎么变</h2>
-  <p class="meta">判断什么：取多大的 k 合适；能改什么：滑动条调 k（1—6）；观察什么：命中的相关文档数与混入的噪声文档数；独立验证：找到“召回全部相关文档且噪声最少”的最小 k。</p>
+  <p class="meta">判断什么：取多大的 k 合适；能改什么：滑动条调 k（1—6）；观察什么：命中的相关文档数与混入的噪声文档数；独立验证：找到“召回全部相关文档”的最小 k，并观察它的代价。</p>
   <p>某次查询的检索结果（按相似度排序，<span class="ok">加粗绿字</span>为真正相关）：</p>
   <table id="docTable">
     <tr><th>排名</th><th>文档</th><th>相似度</th><th>是否进 top-k</th></tr>
@@ -97,9 +97,9 @@ function update(){
   document.getElementById('hit').textContent=hit;
   document.getElementById('noise').textContent=noise;
   const fb=document.getElementById('kFb');
-  if(hit===2&&noise===0){fb.className='feedback ok';fb.textContent='✓ 最优：k=3 召回全部相关文档且零噪声（本例）。';}
+  if(hit===2&&k===3){fb.className='feedback ok';fb.textContent='✓ 最优：k=3 是召回全部 2 篇相关文档的最小 k。代价是混入 1 篇噪声（D2 恰好排在两篇相关文档中间）——真实系统里“零噪声”往往做不到，只能权衡。';}
   else if(hit<2){fb.className='feedback bad';fb.textContent='召回不足：还有相关文档没进 top-k。';}
-  else{fb.className='feedback bad';fb.textContent='召回了全部相关文档，但混入了 '+noise+' 篇噪声——它们会占用上下文预算。';}
+  else{fb.className='feedback bad';fb.textContent='召回了全部相关文档，但 k='+k+' 比最优多混入 '+(noise-1)+' 篇噪声——它们会白白占用上下文预算。';}
 }
 document.getElementById('k').oninput=update;update();
 const quiz={opts:[
