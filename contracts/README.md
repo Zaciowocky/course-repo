@@ -19,6 +19,7 @@
 | `events.schema.json` | 学习事件 | 陈奕霖 | v0.2 冻结 |
 | `context.schema.json` | 上下文包（工作台 → 学伴） | 陈奕霖 | v0.1 冻结 |
 | `mcp-tools.yaml` | MCP 工具与鉴权 | 谢文博 | v0.1 冻结（教师侧 2 个待定） |
+| `state-gate.yaml` | 四档状态到教学动作与补充种类的门控（本地 MCP 工具任何状态都可调用） | 陈奕霖 | v0.1 冻结 |
 
 后续补：`overlay.schema.json`（补充格式）、`report.schema.json`（report.v0.2）、`migrations.schema.json`（迁移清单）。
 

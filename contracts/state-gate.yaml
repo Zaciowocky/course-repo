@@ -1,0 +1,52 @@
+version: 0.1.0
+frozen: 2026-11-27
+owner: 陈奕霖
+reviewed_by: 邢家鑫
+description: >-
+  四档状态到教学动作、到可生成补充种类的门控规则。状态由画像模块按任务书 4.3 判定（阈值可配置），
+  report.schema.json 只上报判定结果；本文件规定的是「这个状态允许做什么、不允许做什么」，用来把画像从记录变成约束。
+
+# 门控管的是“教什么”，不管“记不记”。
+# 本地 MCP 的 14 个记录与查询工具（任务书 4.2）任何状态都可调用：
+# 做错要进错题本、提问要进问答记忆、复习要记结果、学生可随时更正、每节课要写摘要，不能因状态被禁止。
+tools_always_allowed:
+  memory: [add_mistake, list_due_reviews, record_review, add_qa, search_memory, update_strategy, write_session_summary, get_session_summary]
+  profile: [record_event, get_kp_state, list_uncertain, get_prereq_gaps, get_lesson_state, apply_correction]
+
+# 回答学生提问、按四级提示给提示是学伴的基本职责，任何状态都可做（gap 的升级限制见 rules）。
+actions_always_allowed: [answer_question, hint_ladder]
+
+states:
+  unseen:
+    label: 未接触
+    evidence: 没有任何作答证据
+    actions: [diagnose]
+    may_generate_overlay: false
+    overlay_kinds: []
+
+  gap:
+    label: 有缺口
+    evidence: 掌握概率低于 0.6，或仍在出现的误区
+    actions: [prerequisite_patch, worked_example, diagnostic_probe]
+    may_generate_overlay: true
+    overlay_kinds: [prerequisite_patch, worked_example]
+
+  partial:
+    label: 初步掌握
+    evidence: 掌握概率不低于 0.6，且至少独立做对 1 次
+    actions: [fade_hint, variant_practice]
+    may_generate_overlay: true
+    overlay_kinds: [variant_practice]
+
+  transfer:
+    label: 可迁移
+    evidence: 掌握概率不低于 0.95，迁移题至少独立做对 1 次，且没有仍在出现的误区
+    actions: [transfer_task, extend_reading]
+    may_generate_overlay: true
+    overlay_kinds: [transfer_task, extend_reading]
+
+rules:
+  - 只有 transfer 允许生成「拓展阅读 / 进阶任务」类补充；gap 与 partial 不得越过当前状态。
+  - gap 状态下不得把「答案与完整讲解」作为首选动作；学生连续两次无进展才允许升级到最高提示级别。
+  - 有效证据少于 3 次时标记「待确认」：主动教学动作只允许诊断类（diagnose、diagnostic_probe）；掌握概率照常随作答更新，但四档状态保持待确认，不据一次作答改档。
+  - tools_always_allowed 与 actions_always_allowed 任何状态都可用；states 下未列出的动作与补充种类不得在对应状态下使用，越界时降级为提示，并在日志里记一次越界。

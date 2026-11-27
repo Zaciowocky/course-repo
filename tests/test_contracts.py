@@ -220,3 +220,101 @@ def test_json_contracts_are_valid_and_versioned(rel):
     schema = load_json(rel)
     jsonschema.Draft7Validator.check_schema(schema)
     assert "version" in schema, f"{rel} 缺少 version"
+
+
+# ---------- 状态门控 ----------
+
+GATE = "contracts/state-gate.yaml"
+
+
+def state_enum():
+    """四档状态；report.schema.json 合入后从契约里读，否则用固定值。"""
+    path = ROOT / "contracts" / "report.schema.json"
+    if path.exists():
+        schema = json.loads(path.read_text(encoding="utf8"))
+        return schema["properties"]["kp_stats"]["items"]["properties"]["state"]["enum"]
+    return ["unseen", "gap", "partial", "transfer"]
+
+
+def test_every_state_has_gate():
+    gate = load_yaml(GATE)["states"]
+    for state in state_enum():
+        assert state in gate, f"{state} 缺少门控定义"
+        assert gate[state]["actions"], f"{state} 没有可用动作"
+
+
+def test_overlay_only_where_allowed():
+    for name, rule in load_yaml(GATE)["states"].items():
+        if rule["may_generate_overlay"]:
+            assert rule["overlay_kinds"], f"{name} 允许生成补充却没有 kinds"
+        else:
+            assert not rule["overlay_kinds"], f"{name} 不允许生成补充却列了 kinds"
+
+
+def test_only_transfer_allows_extension():
+    states = load_yaml(GATE)["states"]
+    assert "extend_reading" in states["transfer"]["overlay_kinds"]
+    for name in ("unseen", "gap", "partial"):
+        assert "extend_reading" not in states[name]["overlay_kinds"], f"{name} 不应允许拓展"
+
+
+# 任务书 4.2 列出的本地 MCP 工具：记忆类 8 个 + 画像类 6 个
+LOCAL_MCP_TOOLS = {
+    "add_mistake", "list_due_reviews", "record_review", "add_qa", "search_memory",
+    "update_strategy", "write_session_summary", "get_session_summary",
+    "record_event", "get_kp_state", "list_uncertain", "get_prereq_gaps",
+    "get_lesson_state", "apply_correction",
+}
+
+
+def test_gate_never_locks_local_tools():
+    """门控管“教什么”不管“记不记”：14 个本地工具任何状态都可调用。"""
+    gate = load_yaml(GATE)
+    allowed = {t for group in gate["tools_always_allowed"].values() for t in group}
+    assert allowed == LOCAL_MCP_TOOLS, f"缺 {LOCAL_MCP_TOOLS - allowed}，多 {allowed - LOCAL_MCP_TOOLS}"
+    for name, rule in gate["states"].items():
+        assert "tools" not in rule, f"{name} 不应再按状态限制工具"
+
+
+def test_gate_always_allows_answering():
+    """回答提问和四级提示是基本职责，不能被状态门控挡掉。"""
+    always = load_yaml(GATE)["actions_always_allowed"]
+    assert {"answer_question", "hint_ladder"} <= set(always)
+
+
+def test_gate_actions_do_not_overlap_always_allowed():
+    gate = load_yaml(GATE)
+    always = set(gate["actions_always_allowed"])
+    for name, rule in gate["states"].items():
+        assert not always & set(rule["actions"]), f"{name} 重复列了常驻动作"
+
+
+# ---------- 技能格式 ----------
+
+SKILL = ROOT / "skills" / "course-material-generator" / "SKILL.md"
+
+
+def skill_frontmatter():
+    text = SKILL.read_text(encoding="utf8")
+    assert text.startswith("---"), "SKILL.md 缺少 frontmatter"
+    body = text.split("---", 2)
+    return yaml.safe_load(body[1]), body[2]
+
+
+def test_skill_frontmatter_valid():
+    fm, _ = skill_frontmatter()
+    assert fm["name"] == SKILL.parent.name, "name 必须与目录名一致"
+    assert fm.get("description"), "缺少 description"
+    assert len(fm["description"]) <= 240, "description 过长，加载时会被截断"
+    assert fm.get("version"), "缺少 version"
+
+
+def test_skill_has_no_always_flag():
+    """借鉴导入安全闸：技能不得把自己塞进每个 prompt。"""
+    assert "always:" not in SKILL.read_text(encoding="utf8").lower()
+
+
+def test_skill_declares_boundaries():
+    _, body = skill_frontmatter()
+    assert "不判断课程标准" in body
+    assert "不动发布分支" in body
