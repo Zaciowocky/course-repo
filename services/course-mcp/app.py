@@ -113,11 +113,13 @@ def _json_path(err: jsonschema.ValidationError) -> str:
 
 @app.post("/auth/register")
 def register(body: RegisterIn) -> dict:
-    entry = INVITES.pop(body.invite_code, None)
+    entry = INVITES.get(body.invite_code)
     if not entry:
         raise HTTPException(status_code=403, detail="AUTH-403-02 邀请码无效或已使用")
     if entry[0] != body.student_id:
+        # 先校验学号再消耗，避免填错学号也把邀请码烧掉
         raise HTTPException(status_code=403, detail="AUTH-403-03 学号与邀请码不匹配")
+    INVITES.pop(body.invite_code)
     return {"token": _issue_token(*entry), "role": entry[1], "student_id": entry[0]}
 
 
