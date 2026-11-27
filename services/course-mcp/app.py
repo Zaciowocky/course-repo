@@ -45,6 +45,9 @@ CONTENT_GAP_STUDENTS = 3
 INVITES: dict[str, tuple[str, str]] = {
     "INV-ALPHA": ("2026101", "student"),
     "INV-BETA": ("2026102", "student"),
+    "INV-GAMMA": ("2026103", "student"),
+    "INV-DELTA": ("2026104", "student"),
+    "INV-EPS": ("2026105", "student"),
     "INV-TEACHER": ("T-001", "teacher"),
 }
 TOKENS: dict[str, dict] = {}
