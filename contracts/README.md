@@ -22,7 +22,7 @@
 | `report.schema.json` | 进度上报 report.v0.2 | 邢家鑫 | v0.2 冻结 |
 | `state-gate.yaml` | 四档状态到教学动作与补充种类的门控（本地 MCP 工具任何状态都可调用） | 陈奕霖 | v0.1 冻结 |
 
-后续补：`overlay.schema.json`（补充格式）、`report.schema.json`（report.v0.2）、`migrations.schema.json`（迁移清单）。
+后续补：`overlay.schema.json`（补充格式）、`migrations.schema.json`（迁移清单）。
 
 ## 变更记录
 
@@ -66,7 +66,7 @@
 两条硬约束：
 
 - **不上报**：聊天原文、问题原文、题干与答案原文、错题本条目、讲解偏好、自述基础、误区证据、遗忘参数、精确掌握概率、逐条事件与精确时间戳。结构上由 `additionalProperties: false` 挡住，多一个字段就校验失败。
-- **`duration_s` 上报层钳到 600**：本地事件保留真实时长（events v0.2 上限 3600），上报时超过 600 记 600。
+- **用时按每次停留钳到 600 再累加**：本地事件保留真实时长（events v0.2 上限 3600）；上报时每次页面停留超过 600 记 600，`kp_stats[].duration_s` 是截断后的累计值，上限一天（与 `study_seconds` 一致）。
 
 `tier: "minimal"` 时只保留进度与 `kp_id` + `state`，其余统计字段一律不出现。
 

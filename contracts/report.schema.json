@@ -134,7 +134,7 @@
               "mid",
               "high"
             ],
-            "description": "掌握概率区间，不上报精确掌握概率。"
+            "description": "掌握概率区间，不上报精确掌握概率。分界与任务书 4.3 的四档阈值一致：low 低于 0.6，mid 不低于 0.6 且低于 0.95，high 不低于 0.95。"
           },
           "attempts": {
             "type": "integer",
@@ -206,8 +206,8 @@
           "duration_s": {
             "type": "integer",
             "minimum": 0,
-            "maximum": 600,
-            "description": "该知识点的用量（秒）。上报层钳到 600：本地事件可记录真实时长，上报时超过 600 一律记 600，避免用极端值推断学生作息。"
+            "maximum": 86400,
+            "description": "该知识点在统计时段内的累计用时（秒）。累加前每次页面停留先按 600 截断（防挂机、避免用极端值推断学生作息），累计值上限一天，与 progress.study_seconds 一致。"
           }
         },
         "additionalProperties": false
