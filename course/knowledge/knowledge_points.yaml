@@ -1,4 +1,4 @@
-version: 0.1.0
+version: 0.2.0
 knowledge_points:
   - id: KP-RAG-001
     title: 检索增强生成的基本结构
@@ -7,10 +7,11 @@ knowledge_points:
     difficulty: 入门
     objectives:
       - 说清查询编码、检索、生成三者的分工
+      - 能画出"问题 → 查询向量 → 检索文档 → 拼接上下文 → 生成回答"五步链路
     assessment: 能画出五步链路并指出每步的输入输出
     core: true
-    sources: [SRC-001]
-    pages: []
+    sources: [SRC-001, SRC-003]
+    pages: [PG-S01-001]
     misconceptions:
       - code: MIS-RAG-001-01
         name: 把检索当成模型记忆的一部分
@@ -24,10 +25,121 @@ knowledge_points:
     difficulty: 进阶
     objectives:
       - 能判断生成内容是否落在检索到的材料范围内
-    assessment: 给定一段回答，指出其中哪些结论可回查
+      - 知道检索到的内容可能因位置、长度原因被生成器忽略
+    assessment: 给定一段回答，指出其中哪些结论可回查、哪些无依据
     core: true
-    sources: [SRC-001, SRC-002]
-    pages: []
+    sources: [SRC-001, SRC-005]
+    pages: [PG-S01-002]
     misconceptions:
       - code: MIS-RAG-002-01
         name: 把相关性当成正确性
+      - code: MIS-RAG-002-02
+        name: 认为拼进上下文的内容一定会被生成器使用
+
+  - id: KP-RAG-003
+    title: 查询编码与向量相似度
+    session: S01
+    prerequisites: [KP-RAG-001]
+    difficulty: 进阶
+    objectives:
+      - 说清文本如何被编码为向量，相似度如何计算
+      - 能用余弦相似度解释"语义相近则向量相近"
+    assessment: 给定查询向量与文档向量，手算余弦相似度并排序
+    core: true
+    sources: [SRC-004, SRC-003]
+    pages: [PG-S01-003]
+    misconceptions:
+      - code: MIS-RAG-003-01
+        name: 认为向量相似等于语义完全相同
+      - code: MIS-RAG-003-02
+        name: 以为余弦相似度取值范围是 0 到 1
+
+  - id: KP-RAG-004
+    title: 检索策略与 top-k 取舍
+    session: S01
+    prerequisites: [KP-RAG-003]
+    difficulty: 进阶
+    objectives:
+      - 理解 top-k、相似度阈值对召回与噪声的影响
+      - 能解释"检索不到"与"检索到但没用上"是两种不同失败
+    assessment: 给定检索得分表，选择 k 并说明对召回率和上下文噪声的影响
+    core: true
+    sources: [SRC-003, SRC-001]
+    pages: [PG-S01-004]
+    misconceptions:
+      - code: MIS-RAG-004-01
+        name: 以为 top-k 越大效果越好
+      - code: MIS-RAG-004-02
+        name: 把检索失败归因于生成模型不会答
+
+  - id: KP-RAG-005
+    title: 上下文组装与提示组织
+    session: S02
+    prerequisites: [KP-RAG-002]
+    difficulty: 进阶
+    objectives:
+      - 说清指令、检索片段、问题在提示词中的组织方式
+      - 知道上下文长度限制与"中间丢失"现象
+    assessment: 给定检索片段与长度预算，组装提示词并说明取舍理由
+    core: true
+    sources: [SRC-005, SRC-002]
+    pages: [PG-S02-001]
+    misconceptions:
+      - code: MIS-RAG-005-01
+        name: 认为上下文塞得越长越好
+      - code: MIS-RAG-005-02
+        name: 以为检索片段放在什么位置对生成没有影响
+
+  - id: KP-RAG-006
+    title: 生成有据：引用与事实核查
+    session: S02
+    prerequisites: [KP-RAG-002]
+    difficulty: 进阶
+    objectives:
+      - 能给生成结论逐条标注来源，并区分"有依据"与"看似有依据"
+      - 掌握逐条回查的核查方法
+    assessment: 给定带引用的回答，逐条核对来源是否真的支撑对应结论
+    core: true
+    sources: [SRC-001, SRC-003]
+    pages: [PG-S02-002]
+    misconceptions:
+      - code: MIS-RAG-006-01
+        name: 认为标了引用就等于结论正确
+      - code: MIS-RAG-006-02
+        name: 把模型的置信语气当作证据
+
+  - id: KP-RAG-007
+    title: RAG 系统的效果评价
+    session: S02
+    prerequisites: [KP-RAG-004, KP-RAG-006]
+    difficulty: 挑战
+    objectives:
+      - 区分检索侧指标（召回率、命中率）与生成侧指标（忠实度、答案正确率）
+      - 能从评价结果定位失败发生在检索侧还是生成侧
+    assessment: 给定一个 RAG 系统的测试记录，计算召回指标并判断瓶颈所在侧
+    core: false
+    sources: [SRC-003]
+    pages: [PG-S02-003]
+    misconceptions:
+      - code: MIS-RAG-007-01
+        name: 只看最终回答准确率，不分开评价检索与生成
+      - code: MIS-RAG-007-02
+        name: 用训练阶段见过的题目做评价
+
+  - id: KP-RAG-008
+    title: 动手：搭建最小 RAG 流程
+    session: S02
+    prerequisites: [KP-RAG-001, KP-RAG-003, KP-RAG-005]
+    difficulty: 挑战
+    objectives:
+      - 亲手完成编码、索引、检索、组装、生成五个步骤
+      - 观察换查询、换 k、换文档对最终回答的影响
+    assessment: 在页面实验中让系统正确回答指定问题，并解释每步的作用
+    core: true
+    sources: [SRC-002, SRC-006]
+    pages: [PG-S02-004]
+    misconceptions:
+      - code: MIS-RAG-008-01
+        name: 认为换了嵌入模型可以不用重建索引
+      - code: MIS-RAG-008-02
+        name: 把玩具实验的结论直接推广到生产规模

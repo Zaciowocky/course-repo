@@ -1,0 +1,149 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>PG-S02-004 动手：搭建最小 RAG 流程</title>
+<style>
+:root{--ink:#1f2933;--line:#d7dee6;--brand:#2563eb;--ok:#15803d;--bad:#b91c1c;--bg:#f8fafc}
+*{box-sizing:border-box}
+body{margin:0;font-family:"Segoe UI","Microsoft YaHei",sans-serif;color:var(--ink);background:var(--bg);line-height:1.7}
+header{background:#0f2740;color:#dbe7f3;padding:14px 22px;font-size:13px}
+header b{color:#7dd3fc}
+main{max-width:860px;margin:0 auto;padding:24px 22px 60px}
+section{background:#fff;border:1px solid var(--line);border-radius:10px;padding:18px 22px;margin:16px 0}
+h1{font-size:22px;margin:4px 0 0;color:#0f2740}
+h2{font-size:17px;margin:0 0 10px;color:#0f2740}
+.meta{font-size:13px;color:#64748b}
+code{background:#eef2f7;padding:1px 5px;border-radius:4px;font-size:13px}
+button{background:var(--brand);color:#fff;border:0;border-radius:6px;padding:7px 14px;cursor:pointer;font-size:14px}
+button.ghost{background:#fff;color:var(--brand);border:1px solid var(--brand);display:block;margin:6px 0;text-align:left}
+table{border-collapse:collapse;width:100%;font-size:14px;margin:10px 0}
+td,th{border:1px solid var(--line);padding:6px 10px;text-align:left}
+tr.top{background:#dcfce7}
+input[type=text]{width:70%;padding:6px 10px;border:1px solid var(--line);border-radius:6px;font-size:14px}
+input[type=range]{width:120px}
+pre{background:#0f2740;color:#dbe7f3;padding:10px 14px;border-radius:8px;font-size:13px;white-space:pre-wrap}
+.answer{background:#fffdf5;border:1px solid #f0e6c8;border-radius:8px;padding:12px;margin-top:8px}
+.ok{color:var(--ok);font-weight:600}.bad{color:var(--bad);font-weight:600}
+details{background:#f1f5f9;border-radius:6px;padding:8px 12px;margin-top:10px}
+.feedback{margin-top:10px;font-weight:600}
+.stage{font-weight:700;color:#0f2740}
+</style>
+</head>
+<body data-kp="KP-RAG-008">
+<!-- pg: PG-S02-004 kp: KP-RAG-008 -->
+<header>
+  课程 <b>RAG</b> · 课节 <b>S02</b> · 知识点 <b>KP-RAG-008</b> · 页面 <b>PG-S02-004</b><br>
+  来源依据：<b>SRC-002</b>（课程讲义）、<b>SRC-006</b>（实验环境说明） · 先修：KP-RAG-001、KP-RAG-003、KP-RAG-005
+</header>
+<main>
+<h1>动手：搭建最小 RAG 流程</h1>
+<p class="meta">对应知识点：KP-RAG-008（必修 · 挑战）｜教学目标：亲手完成编码、索引、检索、组装、生成五步，观察各环节对回答的影响。</p>
+
+<section data-node-id="NODE-S02-010">
+  <h2>一、任务说明</h2>
+  <p>这个页面内置了一个<strong>真实的（但极小的）RAG 系统</strong>，全部在你的浏览器里运行，不调用任何外部服务：</p>
+  <ul>
+    <li><strong>文档库</strong>：下方 5 篇短文档（相当于可信来源库）。</li>
+    <li><strong>编码器</strong>：把文本切成两字一组（bigram）统计词频，得到稀疏向量——是 Sentence-BERT（SRC-004）的极简替代品。</li>
+    <li><strong>检索器</strong>：计算查询与每篇文档的余弦相似度，返回 top-k。</li>
+    <li><strong>组装</strong>：把检索片段与问题拼成提示词，你可以直接看到它。</li>
+    <li><strong>生成器</strong>：模板化“生成”——它只会复述检索到的材料并标注来源，用来隔离生成能力的干扰。</li>
+  </ul>
+  <p><strong>验收任务</strong>：在下方输入问题「RAG 是哪一年提出的」，让系统给出带来源的正确答案，并把 k 调成 1 再观察变化。</p>
+  <p class="meta">注意：玩具系统的结论不能外推到生产规模——真实系统的语义理解靠训练好的编码器，而不是字符重合（对应误区 MIS-RAG-008-02）。</p>
+</section>
+
+<section data-node-id="NODE-S02-011">
+  <h2>二、实验台</h2>
+  <p class="meta">判断什么：每次回答的依据来自哪篇文档；能改什么：查询内容、top-k 的 k；观察什么：相似度表、组装后的提示词、生成的回答；独立验证：完成左侧验收任务。</p>
+  <table>
+    <tr><th>文档</th><th>内容</th></tr>
+    <tr><td>D1</td><td>RAG 由 Lewis 等人于 2020 年提出，全称检索增强生成。</td></tr>
+    <tr><td>D2</td><td>向量检索把文本编码为向量，再按余弦相似度排序。</td></tr>
+    <tr><td>D3</td><td>top-k 决定检索返回的文档数量，太大会引入噪声。</td></tr>
+    <tr><td>D4</td><td>中间丢失指模型对长上下文中段信息的利用率下降。</td></tr>
+    <tr><td>D5</td><td>番茄炒蛋的做法是先炒蛋再放番茄。</td></tr>
+  </table>
+  <p>查询：<input type="text" id="q" value="RAG 是哪一年提出的">
+  k = <input type="range" id="k" min="1" max="5" step="1" value="2"> <strong id="kv">2</strong>
+  <button onclick="run()">运行</button></p>
+  <div id="pipeOut"></div>
+  <div class="feedback" id="labFb"></div>
+</section>
+
+<section data-node-id="NODE-S02-012">
+  <h2>三、即学即测（ACT-S02-004）</h2>
+  <p><strong>题目</strong>：系统上线后，你想把编码器从模型甲换成效果更好的模型乙。除了替换编码器，还必须做什么？</p>
+  <div id="quiz"></div>
+  <div class="feedback" id="quizFb"></div>
+  <details>
+    <summary>答案要点与解析</summary>
+    <p><strong>答案</strong>：B。</p>
+    <p><strong>要点</strong>：索引里存的是模型甲算出的向量；换成模型乙后向量空间完全不同，
+    必须用模型乙把文档库<strong>全部重新编码、重建索引</strong>，否则查询向量与文档向量不在同一空间，相似度毫无意义。</p>
+    <p><strong>易错点</strong>：选 A 对应误区 <code>MIS-RAG-008-01</code>（以为换嵌入模型不用重建索引）。</p>
+  </details>
+</section>
+</main>
+
+<script>
+const docs=[
+ {id:'D1',t:'RAG 由 Lewis 等人于 2020 年提出，全称检索增强生成。'},
+ {id:'D2',t:'向量检索把文本编码为向量，再按余弦相似度排序。'},
+ {id:'D3',t:'top-k 决定检索返回的文档数量，太大会引入噪声。'},
+ {id:'D4',t:'中间丢失指模型对长上下文中段信息的利用率下降。'},
+ {id:'D5',t:'番茄炒蛋的做法是先炒蛋再放番茄。'}];
+function bigrams(s){s=s.toLowerCase().replace(/[^a-z0-9一-鿿]/g,'');
+  const m={};for(let i=0;i<s.length-1;i++){const g=s.slice(i,i+2);m[g]=(m[g]||0)+1;}
+  if(s.length===1)m[s]=1;return m;}
+function cos(a,b){let dot=0,na=0,nb=0;
+  for(const k in a){na+=a[k]*a[k];if(k in b)dot+=a[k]*b[k];}
+  for(const k in b)nb+=b[k]*b[k];
+  return na&&nb?dot/Math.sqrt(na*nb):0;}
+const docVecs=docs.map(d=>bigrams(d.t));
+document.getElementById('k').oninput=e=>{document.getElementById('kv').textContent=e.target.value;};
+function run(){
+  const q=document.getElementById('q').value.trim();
+  const k=+document.getElementById('k').value;
+  const out=document.getElementById('pipeOut'),fb=document.getElementById('labFb');
+  if(!q){fb.className='feedback bad';fb.textContent='请输入查询。';return;}
+  const qv=bigrams(q);
+  const sims=docs.map((d,i)=>({d,s:cos(qv,docVecs[i])})).sort((a,b)=>b.s-a.s);
+  const top=sims.slice(0,k);
+  let html='<p class="stage">第 1—2 步 · 查询编码与检索</p><table><tr><th>文档</th><th>相似度</th><th>进 top-'+k+'?</th></tr>';
+  sims.forEach((r,i)=>{html+='<tr class="'+(i<k?'top':'')+'"><td>'+r.d.id+'</td><td>'+r.s.toFixed(3)+'</td><td>'+(i<k?'✓':'—')+'</td></tr>';});
+  html+='</table><p class="stage">第 3 步 · 组装后的提示词</p><pre>[指令] 仅依据以下材料回答，并标注来源编号。\n'
+    +top.map(r=>'['+r.d.id+'] '+r.d.t).join('\n')+'\n[问题] '+q+'</pre>';
+  const usable=top.filter(r=>r.s>0.05);
+  html+='<p class="stage">第 4—5 步 · 生成回答</p>';
+  if(usable.length){
+    html+='<div class="answer">根据检索到的材料：'+usable.map(r=>r.d.t+' <b>['+r.d.id+']</b>').join('；')
+      +'。<br><span class="meta">（生成器只复述检索材料并标注来源，共引用 '+usable.length+' 篇）</span></div>';
+  }else{
+    html+='<div class="answer">文档库中没有可回答该问题的材料（所有相似度过低）——这就是“检索不到”型失败，而不是模型不会答。</div>';
+  }
+  out.innerHTML=html;
+  if(q.includes('哪一年')&&top[0].d.id==='D1'&&top[0].s>0.05){
+    fb.className='feedback ok';
+    fb.textContent='✓ 验收达成：D1 排在 top-1，回答中的“2020 年”可回查到 [D1]。现在把 k 调成 1 再运行，观察回答是否仍然成立。';
+  }else{
+    fb.className='feedback ';
+    fb.textContent='提示：试试让 D1 成为 top-1（例如输入验收任务里的问题），观察回答引用的变化。';
+  }
+}
+run();
+const quiz={opts:[
+ 'A. 什么都不用做，向量是通用的',
+ 'B. 用模型乙把文档库全部重新编码、重建索引',
+ 'C. 只需要把 top-k 调大',
+ 'D. 把旧索引里的向量取绝对值即可复用'],ans:1};
+const qz=document.getElementById('quiz'),qfb=document.getElementById('quizFb');
+quiz.opts.forEach((o,i)=>{const b=document.createElement('button');b.className='ghost';b.textContent=o;
+  b.onclick=()=>{qfb.className='feedback '+(i===quiz.ans?'ok':'bad');
+    qfb.textContent=i===quiz.ans?'✓ 回答正确':'✗ 再想想：向量只有在同一个编码器下才可比较';};
+  qz.appendChild(b);});
+</script>
+</body>
+</html>

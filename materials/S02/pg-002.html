@@ -1,0 +1,124 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>PG-S02-002 生成有据：引用与事实核查</title>
+<style>
+:root{--ink:#1f2933;--line:#d7dee6;--brand:#2563eb;--ok:#15803d;--bad:#b91c1c;--bg:#f8fafc}
+*{box-sizing:border-box}
+body{margin:0;font-family:"Segoe UI","Microsoft YaHei",sans-serif;color:var(--ink);background:var(--bg);line-height:1.7}
+header{background:#0f2740;color:#dbe7f3;padding:14px 22px;font-size:13px}
+header b{color:#7dd3fc}
+main{max-width:860px;margin:0 auto;padding:24px 22px 60px}
+section{background:#fff;border:1px solid var(--line);border-radius:10px;padding:18px 22px;margin:16px 0}
+h1{font-size:22px;margin:4px 0 0;color:#0f2740}
+h2{font-size:17px;margin:0 0 10px;color:#0f2740}
+.meta{font-size:13px;color:#64748b}
+code{background:#eef2f7;padding:1px 5px;border-radius:4px;font-size:13px}
+button{background:var(--brand);color:#fff;border:0;border-radius:6px;padding:7px 14px;cursor:pointer;font-size:14px}
+button.ghost{background:#fff;color:var(--brand);border:1px solid var(--brand);display:block;margin:6px 0;text-align:left}
+sup{color:var(--brand);cursor:pointer;font-weight:700;padding:0 2px}
+.srcbox{border-left:4px solid var(--brand);background:#f8fafc;padding:8px 12px;margin:8px 0;font-size:14px;display:none}
+.judge{margin-left:12px}
+.judge.ok{color:var(--ok);font-weight:700}
+.judge.bad{color:var(--bad);font-weight:700}
+.ok{color:var(--ok);font-weight:600}.bad{color:var(--bad);font-weight:600}
+details{background:#f1f5f9;border-radius:6px;padding:8px 12px;margin-top:10px}
+.feedback{margin-top:10px;font-weight:600}
+</style>
+</head>
+<body data-kp="KP-RAG-006">
+<!-- pg: PG-S02-002 kp: KP-RAG-006 -->
+<header>
+  课程 <b>RAG</b> · 课节 <b>S02</b> · 知识点 <b>KP-RAG-006</b> · 页面 <b>PG-S02-002</b><br>
+  来源依据：<b>SRC-001</b>（RAG 原始论文）、<b>SRC-003</b>（RAG 综述） · 先修：KP-RAG-002
+</header>
+<main>
+<h1>生成有据：引用与事实核查</h1>
+<p class="meta">对应知识点：KP-RAG-006（必修 · 进阶）｜教学目标：逐条标注来源，区分“有依据”与“看似有依据”。</p>
+
+<section data-node-id="NODE-S02-004">
+  <h2>一、概念：引用要经得起逐条回查</h2>
+  <p>RAG 的优势是可回查：回答里的每条结论都应对应到检索材料中的具体出处（SRC-001）。
+  但<strong>标了引用 ≠ 结论正确</strong>：引用可能张冠李戴（来源讲了这个话题，却不支持这个结论），
+  也可能来源本身就是噪声。核查的方法只有一条：<strong>逐条打开来源，确认它真的支撑对应结论</strong>（SRC-003 称之为忠实度检查）。</p>
+  <p>同样，模型用笃定语气陈述的事实不一定是事实——语气不是证据。</p>
+</section>
+
+<section data-node-id="NODE-S02-005">
+  <h2>二、交互：当一次核查员</h2>
+  <p class="meta">判断什么：每条引用是否真的支撑对应结论；能改什么：点开引用看来源、给每条下“支撑 / 不支撑”的判定；观察什么：来源原文与结论的对应关系；独立验证：三条全部判对。</p>
+  <p><strong>待核查的回答</strong>（点击上标 [n] 展开对应来源）：</p>
+  <p style="background:#fffdf5;border:1px solid #f0e6c8;border-radius:8px;padding:12px">
+    RAG 在检索阶段把查询和文档都编码为向量再比对其相似度<sup data-s="1">[1]</sup><span class="judge" id="j1"></span>。
+    RAG 由 Lewis 等人在 2020 年的论文中提出<sup data-s="2">[2]</sup> <span class="judge" id="j2"></span>。
+    检索时 top-k 固定取 3 是所有场景的最佳实践<sup data-s="3">[3]</sup> <span class="judge" id="j3"></span>。
+  </p>
+  <div class="srcbox" id="s1"><strong>来源[1]</strong>（SRC-001）：查询被编码为查询向量，用最大内积检索取出文档，生成模型在给定文档条件下产出答案。</div>
+  <div class="srcbox" id="s2"><strong>来源[2]</strong>（SRC-001 摘要）：我们提出检索增强生成（RAG）……本文发表于 NeurIPS 2020。</div>
+  <div class="srcbox" id="s3"><strong>来源[3]</strong>（SRC-003 节选）：检索阶段的常见做法包括设置 top-k、分块大小等超参数，<em>其取值依任务与数据而定</em>。</div>
+  <p class="meta">展开来源后，用每条后面的按钮判定。全部判定完点“提交核查”。</p>
+  <div id="judgeBtns"></div>
+  <button onclick="grade()">提交核查</button>
+  <button class="ghost" onclick="resetAll()" style="display:inline-block">重置</button>
+  <div class="feedback" id="fb"></div>
+</section>
+
+<section data-node-id="NODE-S02-006">
+  <h2>三、即学即测（ACT-S02-002）</h2>
+  <p><strong>题目</strong>：一条回答写着“RAG 一定能消除大模型的幻觉[3]”，且[3]确实是一篇 RAG 综述。
+  这条引用的问题是什么？</p>
+  <div id="quiz"></div>
+  <div class="feedback" id="quizFb"></div>
+  <details>
+    <summary>答案要点与解析</summary>
+    <p><strong>答案</strong>：D。</p>
+    <p><strong>要点</strong>：综述讨论 RAG 但并未承诺“一定消除幻觉”——来源与话题相关却不支撑该结论；
+    “一定消除”这类绝对化表述本身就是危险信号（SRC-003）。</p>
+    <p><strong>易错点</strong>：选 A 对应误区 <code>MIS-RAG-006-01</code>（标了引用就当正确）；
+    被笃定语气说服对应误区 <code>MIS-RAG-006-02</code>。</p>
+  </details>
+</section>
+</main>
+
+<script>
+const truth={1:true,2:true,3:false};  // 来源3与话题相关但不支撑“固定取3最佳”
+const judged={};
+document.querySelectorAll('sup').forEach(s=>s.onclick=()=>{
+  const b=document.getElementById('s'+s.dataset.s);
+  b.style.display=b.style.display==='block'?'none':'block';});
+const jb=document.getElementById('judgeBtns');
+[1,2,3].forEach(n=>{
+  const row=document.createElement('div');row.style.margin='6px 0';
+  row.innerHTML='结论['+n+']：';
+  ['支撑','不支撑'].forEach((lab,idx)=>{
+    const b=document.createElement('button');b.textContent=lab;b.style.marginLeft='6px';
+    b.onclick=()=>{judged[n]=(idx===0);
+      const j=document.getElementById('j'+n);j.textContent=idx===0?'✓判为支撑':'✗判为不支撑';
+      j.className='judge '+(idx===0?'ok':'bad');};
+    row.appendChild(b);});
+  jb.appendChild(row);});
+function grade(){const fb=document.getElementById('fb');
+  if(Object.keys(judged).length<3){fb.className='feedback bad';fb.textContent='三条结论都要先判定。';return;}
+  let right=0;[1,2,3].forEach(n=>{if(judged[n]===truth[n])right++;});
+  fb.className='feedback '+(right===3?'ok':'bad');
+  fb.textContent=right===3?'✓ 核查全部正确：[1][2] 被来源支撑；[3] 来源只说“取值依任务而定”，并不支撑“固定取3最佳”——相关但不支撑。'
+    :'✗ 判对 '+right+'/3。提示：核查标准不是“来源讲了这个话题”，而是“来源支撑这句话”。';}
+function resetAll(){for(const k in judged)delete judged[k];
+  [1,2,3].forEach(n=>{const j=document.getElementById('j'+n);j.textContent='';j.className='judge';
+    document.getElementById('s'+n).style.display='none';});
+  document.getElementById('fb').textContent='';}
+const quiz={opts:[
+ 'A. 没有问题：标了引用就是可信的',
+ 'B. 问题是引用了中文来源',
+ 'C. 问题是引用编号应该用字母',
+ 'D. 来源与话题相关，但不支撑“一定消除幻觉”这个绝对化结论'],ans:3};
+const qz=document.getElementById('quiz'),qfb=document.getElementById('quizFb');
+quiz.opts.forEach((o,i)=>{const b=document.createElement('button');b.className='ghost';b.textContent=o;
+  b.onclick=()=>{qfb.className='feedback '+(i===quiz.ans?'ok':'bad');
+    qfb.textContent=i===quiz.ans?'✓ 回答正确':'✗ 再想想：核查的标准是“支撑”而不是“相关”';};
+  qz.appendChild(b);});
+</script>
+</body>
+</html>

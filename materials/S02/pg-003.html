@@ -1,0 +1,124 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>PG-S02-003 RAG 系统的效果评价</title>
+<style>
+:root{--ink:#1f2933;--line:#d7dee6;--brand:#2563eb;--ok:#15803d;--bad:#b91c1c;--bg:#f8fafc}
+*{box-sizing:border-box}
+body{margin:0;font-family:"Segoe UI","Microsoft YaHei",sans-serif;color:var(--ink);background:var(--bg);line-height:1.7}
+header{background:#0f2740;color:#dbe7f3;padding:14px 22px;font-size:13px}
+header b{color:#7dd3fc}
+main{max-width:860px;margin:0 auto;padding:24px 22px 60px}
+section{background:#fff;border:1px solid var(--line);border-radius:10px;padding:18px 22px;margin:16px 0}
+h1{font-size:22px;margin:4px 0 0;color:#0f2740}
+h2{font-size:17px;margin:0 0 10px;color:#0f2740}
+.meta{font-size:13px;color:#64748b}
+code{background:#eef2f7;padding:1px 5px;border-radius:4px;font-size:13px}
+button{background:var(--brand);color:#fff;border:0;border-radius:6px;padding:7px 14px;cursor:pointer;font-size:14px}
+button.ghost{background:#fff;color:var(--brand);border:1px solid var(--brand);display:block;margin:6px 0;text-align:left}
+table{border-collapse:collapse;width:100%;font-size:14px;margin:10px 0}
+td,th{border:1px solid var(--line);padding:6px 10px;text-align:center}
+input[type=text]{width:80px;padding:4px 8px;border:1px solid var(--line);border-radius:6px;font-size:14px}
+.ok{color:var(--ok);font-weight:600}.bad{color:var(--bad);font-weight:600}
+details{background:#f1f5f9;border-radius:6px;padding:8px 12px;margin-top:10px}
+.feedback{margin-top:10px;font-weight:600}
+</style>
+</head>
+<body data-kp="KP-RAG-007">
+<!-- pg: PG-S02-003 kp: KP-RAG-007 -->
+<header>
+  课程 <b>RAG</b> · 课节 <b>S02</b> · 知识点 <b>KP-RAG-007</b> · 页面 <b>PG-S02-003</b><br>
+  来源依据：<b>SRC-003</b>（RAG 综述） · 先修：KP-RAG-004、KP-RAG-006
+</header>
+<main>
+<h1>RAG 系统的效果评价</h1>
+<p class="meta">对应知识点：KP-RAG-007（增强 · 挑战）｜教学目标：区分检索侧与生成侧指标，从评价结果定位瓶颈。</p>
+
+<section data-node-id="NODE-S02-007">
+  <h2>一、概念：两侧指标分开算</h2>
+  <p>RAG 系统的评价要拆成两侧（SRC-003）：</p>
+  <ul>
+    <li><strong>检索侧</strong>：相关文档有没有被取回来。常用命中率（Recall@k：测试问题中，相关文档进入 top-k 的比例）。</li>
+    <li><strong>生成侧</strong>：拿到材料后答得对不对、忠不忠实于材料（答案正确率、忠实度）。</li>
+  </ul>
+  <p>只看最终的回答正确率是混淆视听的：正确率低可能是检索没取回材料，也可能是取回了但生成没用好——
+  两种瓶颈的修法完全不同。另外，评价集必须与训练、调参时用的题目分开，否则评价失真。</p>
+</section>
+
+<section data-node-id="NODE-S02-008">
+  <h2>二、交互：从测试记录里算指标、定瓶颈</h2>
+  <p class="meta">判断什么：瓶颈在检索侧还是生成侧；能改什么：在输入框里填你算出的指标；观察什么：下表 10 条测试记录；独立验证：两个指标都算对并答对瓶颈判断。</p>
+  <table>
+    <tr><th>测试题</th><th>相关文档进 top-3？</th><th>最终回答正确？</th></tr>
+    <tr><td>Q1</td><td>✓</td><td>✓</td></tr>
+    <tr><td>Q2</td><td>✓</td><td>✗</td></tr>
+    <tr><td>Q3</td><td>✗</td><td>✗</td></tr>
+    <tr><td>Q4</td><td>✓</td><td>✓</td></tr>
+    <tr><td>Q5</td><td>✓</td><td>✗</td></tr>
+    <tr><td>Q6</td><td>✗</td><td>✗</td></tr>
+    <tr><td>Q7</td><td>✓</td><td>✓</td></tr>
+    <tr><td>Q8</td><td>✓</td><td>✓</td></tr>
+    <tr><td>Q9</td><td>✓</td><td>✗</td></tr>
+    <tr><td>Q10</td><td>✗</td><td>✗</td></tr>
+  </table>
+  <p>① 检索命中率 Recall@3 = <input type="text" id="recall" placeholder="如 0.7">
+     ② 检索成功题目中的回答正确率 = <input type="text" id="acc" placeholder="如 0.6">
+     <button onclick="checkCalc()">核对</button></p>
+  <div class="feedback" id="calcFb"></div>
+  <p>③ 这套系统当前的瓶颈更可能在哪一侧？</p>
+  <div id="sideQuiz"></div>
+  <div class="feedback" id="sideFb"></div>
+</section>
+
+<section data-node-id="NODE-S02-009">
+  <h2>三、即学即测（ACT-S02-003）</h2>
+  <p><strong>题目</strong>：评价一个 RAG 系统时，下列哪种做法会让评价结果失真？</p>
+  <div id="quiz"></div>
+  <div class="feedback" id="quizFb"></div>
+  <details>
+    <summary>答案要点与解析</summary>
+    <p><strong>答案</strong>：B。</p>
+    <p><strong>要点</strong>：评价集混进调参时反复使用过的题目，系统相当于“开卷考试”，指标虚高（SRC-003 要求评价集独立）。</p>
+    <p><strong>易错点</strong>：选 A 对应误区 <code>MIS-RAG-007-01</code>（只看最终准确率，不分两侧）；
+    选 B 没意识到问题则对应误区 <code>MIS-RAG-007-02</code>（用训练期题目做评价）。</p>
+  </details>
+</section>
+</main>
+
+<script>
+// 10 题中 7 题检索命中；命中的 7 题中 4 题答对
+function checkCalc(){
+  const r=document.getElementById('recall').value.trim(),
+        a=document.getElementById('acc').value.trim(),
+        fb=document.getElementById('calcFb');
+  const okR=['0.7','70%','7/10'].includes(r), okA=['0.57','0.571','4/7','57%','57.1%'].includes(a);
+  if(okR&&okA){fb.className='feedback ok';fb.textContent='✓ 两个指标都对：Recall@3=0.7（7/10），命中后的正确率≈0.57（4/7）。';}
+  else{fb.className='feedback bad';
+    fb.textContent='✗ 再算一遍：命中率=检索成功的题数/总题数；命中后正确率=命中且答对的题数/检索成功的题数。';}
+}
+const side={opts:[
+ 'A. 检索侧：命中率太低',
+ 'B. 生成侧：材料大多取回来了，但近一半答错，瓶颈更可能在生成/组装侧',
+ 'C. 两侧都没问题，是题目出难了'],ans:1,
+fb:['命中率 0.7 不算低；注意命中题目里还有近一半答错。',
+ '✓ 正确：7/10 的材料已取回，但其中 3 题答错——先查生成侧与组装位置（结合 KP-RAG-002/005）。',
+ '评价记录本身就指示了瓶颈方向，不能归因于题目。']};
+const sq=document.getElementById('sideQuiz'),sfb=document.getElementById('sideFb');
+side.opts.forEach((o,i)=>{const b=document.createElement('button');b.className='ghost';b.textContent=o;
+  b.onclick=()=>{sfb.className='feedback '+(i===side.ans?'ok':'bad');sfb.textContent=side.fb[i];};
+  sq.appendChild(b);});
+const quiz={opts:[
+ 'A. 同时报告检索命中率与回答正确率',
+ 'B. 评价集里混入大量调参时反复用过的题目',
+ 'C. 统计忠实度（回答是否忠于检索材料）',
+ 'D. 记录每道题的用时'],ans:1};
+const qz=document.getElementById('quiz'),qfb=document.getElementById('quizFb');
+quiz.opts.forEach((o,i)=>{const b=document.createElement('button');b.className='ghost';b.textContent=o;
+  b.onclick=()=>{qfb.className='feedback '+(i===quiz.ans?'ok':'bad');
+    qfb.textContent=i===quiz.ans?'✓ 回答正确':'✗ 再想想：哪种做法会让系统“提前见过考卷”';};
+  qz.appendChild(b);});
+</script>
+</body>
+</html>

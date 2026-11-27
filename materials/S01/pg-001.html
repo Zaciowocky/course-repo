@@ -1,0 +1,128 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>PG-S01-001 检索增强生成的基本结构</title>
+<style>
+:root{--ink:#1f2933;--line:#d7dee6;--brand:#2563eb;--ok:#15803d;--bad:#b91c1c;--bg:#f8fafc}
+*{box-sizing:border-box}
+body{margin:0;font-family:"Segoe UI","Microsoft YaHei",sans-serif;color:var(--ink);background:var(--bg);line-height:1.7}
+header{background:#0f2740;color:#dbe7f3;padding:14px 22px;font-size:13px}
+header b{color:#7dd3fc}
+main{max-width:860px;margin:0 auto;padding:24px 22px 60px}
+section{background:#fff;border:1px solid var(--line);border-radius:10px;padding:18px 22px;margin:16px 0}
+h1{font-size:22px;margin:4px 0 0;color:#0f2740}
+h2{font-size:17px;margin:0 0 10px;color:#0f2740}
+.meta{font-size:13px;color:#64748b}
+code{background:#eef2f7;padding:1px 5px;border-radius:4px;font-size:13px}
+button{background:var(--brand);color:#fff;border:0;border-radius:6px;padding:7px 14px;cursor:pointer;font-size:14px}
+button.ghost{background:#fff;color:var(--brand);border:1px solid var(--brand)}
+.pipe{display:flex;gap:8px;flex-wrap:wrap;margin:12px 0}
+.step{flex:1;min-width:120px;border:2px solid var(--line);border-radius:8px;padding:10px;text-align:center;cursor:pointer;background:#fff}
+.step.sel{border-color:var(--brand);background:#eff6ff}
+.step .t{font-weight:600}
+.chips{display:flex;gap:8px;flex-wrap:wrap;margin:10px 0}
+.chip{border:1px solid var(--brand);color:var(--brand);background:#fff;border-radius:16px;padding:5px 14px;cursor:pointer}
+.chip.used{opacity:.35;pointer-events:none}
+.ok{color:var(--ok);font-weight:600}.bad{color:var(--bad);font-weight:600}
+details{background:#f1f5f9;border-radius:6px;padding:8px 12px;margin-top:10px}
+.feedback{margin-top:10px;font-weight:600}
+#orderOut{min-height:40px;border:1px dashed var(--line);border-radius:8px;padding:8px;margin:10px 0}
+</style>
+</head>
+<body data-kp="KP-RAG-001">
+<!-- pg: PG-S01-001 kp: KP-RAG-001 -->
+<header>
+  课程 <b>RAG</b> · 课节 <b>S01</b> · 知识点 <b>KP-RAG-001</b> · 页面 <b>PG-S01-001</b><br>
+  来源依据：<b>SRC-001</b>（RAG 原始论文）、<b>SRC-003</b>（RAG 综述） · 先修：无
+</header>
+<main>
+<h1>检索增强生成的基本结构</h1>
+<p class="meta">对应知识点：KP-RAG-001（必修 · 入门）｜教学目标：说清查询编码、检索、生成三者的分工，能画出五步链路。</p>
+
+<section data-node-id="NODE-S01-001">
+  <h2>一、概念：五步链路</h2>
+  <p>检索增强生成（RAG）把<strong>参数之外的知识</strong>放进一个可检索的文档库：模型回答问题时不只靠训练时记住的东西，
+  而是先查资料、再依据资料作答（SRC-001）。整条链路分五步，<strong>检索是独立的一步，不是模型记忆的一部分</strong>。</p>
+  <ol>
+    <li><strong>问题</strong>：学生或用户输入的自然语言问题。</li>
+    <li><strong>查询编码</strong>：把问题变成一个向量（一串数字），用于在文档库里比对。</li>
+    <li><strong>检索</strong>：按相似度从文档库取出 top-k 篇相关文档。</li>
+    <li><strong>上下文组装</strong>：把检索到的文档片段与问题、指令拼成提示词。</li>
+    <li><strong>生成</strong>：大模型在给定上下文的条件下产出回答。</li>
+  </ol>
+  <p>因为依据来自外部文档，每条结论都可以回查来源——这是课程后续所有页面反复使用的要求（SRC-001、SRC-003）。</p>
+</section>
+
+<section data-node-id="NODE-S01-002">
+  <h2>二、交互：点一点每一步，再把链路排对</h2>
+  <p class="meta">判断什么：每一步的输入和输出是什么；能改什么：点击选中不同步骤；观察什么：下方说明区；独立验证：完成下方排序挑战。</p>
+  <div class="pipe" id="pipe"></div>
+  <div id="stepInfo" class="meta">点击上方任意步骤，查看它的输入与输出。</div>
+  <hr>
+  <p><strong>排序挑战</strong>：下面五个步骤被打乱了，按真实执行顺序依次点击：</p>
+  <div class="chips" id="chips"></div>
+  <div id="orderOut" class="meta">尚未选择</div>
+  <button class="ghost" onclick="resetOrder()">重置</button>
+  <div class="feedback" id="orderFb"></div>
+</section>
+
+<section data-node-id="NODE-S01-003">
+  <h2>三、即学即测（ACT-S01-001）</h2>
+  <p><strong>题目</strong>：一位同学说：“模型把文档库里的内容都记住了，所以检索只是它回忆知识的一种方式。”
+  这种说法错在哪里？</p>
+  <div id="quiz"></div>
+  <div class="feedback" id="quizFb"></div>
+  <details>
+    <summary>答案要点与解析</summary>
+    <p><strong>答案</strong>：B。</p>
+    <p><strong>要点</strong>：文档库在模型参数之外，检索是运行时的独立步骤；模型本身并不知道库里有什么，
+    检索结果也不一定被完整使用（SRC-001）。</p>
+    <p><strong>易错点</strong>：选 A 对应误区 <code>MIS-RAG-001-01</code>（把检索当成模型记忆的一部分）；
+    选 C 对应误区 <code>MIS-RAG-001-02</code>（认为检索结果一定被完整使用）。</p>
+  </details>
+</section>
+</main>
+
+<script>
+const steps=[
+ {t:"1 问题",io:"输入：自然语言问题；输出：待编码的查询文本。"},
+ {t:"2 查询编码",io:"输入：查询文本；输出：查询向量（一串数字）。"},
+ {t:"3 检索",io:"输入：查询向量；输出：top-k 篇相关文档片段。"},
+ {t:"4 上下文组装",io:"输入：检索片段 + 问题 + 指令；输出：完整提示词。"},
+ {t:"5 生成",io:"输入：提示词；输出：带来源依据的回答。"}
+];
+const pipe=document.getElementById('pipe'),info=document.getElementById('stepInfo');
+steps.forEach((s,i)=>{
+  const d=document.createElement('div');d.className='step';
+  d.innerHTML='<div class="t">'+s.t+'</div>';
+  d.onclick=()=>{document.querySelectorAll('.step').forEach(x=>x.classList.remove('sel'));
+    d.classList.add('sel');info.textContent=s.io;};
+  pipe.appendChild(d);
+});
+const order=[2,0,4,1,3],picked=[];
+const chips=document.getElementById('chips'),out=document.getElementById('orderOut'),fb=document.getElementById('orderFb');
+function renderChips(){chips.innerHTML='';order.forEach(idx=>{
+  const c=document.createElement('button');c.className='chip';c.textContent=steps[idx].t;
+  c.onclick=()=>{picked.push(idx);c.classList.add('used');renderOut();};chips.appendChild(c);});}
+function renderOut(){out.textContent=picked.map(i=>steps[i].t).join(' → ')||'尚未选择';
+  if(picked.length===5){const ok=picked.every((v,i)=>v===i);
+    fb.className='feedback '+(ok?'ok':'bad');
+    fb.textContent=ok?'✓ 顺序正确：问题 → 编码 → 检索 → 组装 → 生成。':'✗ 顺序不对，点“重置”再试一次。注意：检索发生在生成之前。';}}
+function resetOrder(){picked.length=0;fb.textContent='';renderChips();renderOut();}
+renderChips();
+const quiz={q:'',opts:[
+ 'A. 说得对，文档库就是模型的长期记忆',
+ 'B. 文档库在模型参数之外，检索是运行时独立的一步，模型并不知道库里有什么',
+ 'C. 错在顺序：应该是先生成再检索',
+ 'D. 检索到的内容会被模型逐字使用'],ans:1};
+const qz=document.getElementById('quiz'),qfb=document.getElementById('quizFb');
+quiz.opts.forEach((o,i)=>{const b=document.createElement('button');b.className='ghost';
+  b.style.display='block';b.style.margin='6px 0';b.style.textAlign='left';b.textContent=o;
+  b.onclick=()=>{qfb.className='feedback '+(i===quiz.ans?'ok':'bad');
+    qfb.textContent=i===quiz.ans?'✓ 回答正确':'✗ 再想想，可点开下方解析对照误区编码';};
+  qz.appendChild(b);});
+</script>
+</body>
+</html>

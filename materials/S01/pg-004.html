@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>PG-S01-004 检索策略与 top-k 取舍</title>
+<style>
+:root{--ink:#1f2933;--line:#d7dee6;--brand:#2563eb;--ok:#15803d;--bad:#b91c1c;--bg:#f8fafc}
+*{box-sizing:border-box}
+body{margin:0;font-family:"Segoe UI","Microsoft YaHei",sans-serif;color:var(--ink);background:var(--bg);line-height:1.7}
+header{background:#0f2740;color:#dbe7f3;padding:14px 22px;font-size:13px}
+header b{color:#7dd3fc}
+main{max-width:860px;margin:0 auto;padding:24px 22px 60px}
+section{background:#fff;border:1px solid var(--line);border-radius:10px;padding:18px 22px;margin:16px 0}
+h1{font-size:22px;margin:4px 0 0;color:#0f2740}
+h2{font-size:17px;margin:0 0 10px;color:#0f2740}
+.meta{font-size:13px;color:#64748b}
+code{background:#eef2f7;padding:1px 5px;border-radius:4px;font-size:13px}
+button{background:#fff;color:var(--brand);border:1px solid var(--brand);border-radius:6px;padding:7px 14px;cursor:pointer;font-size:14px;display:block;margin:6px 0;text-align:left}
+table{border-collapse:collapse;width:100%;font-size:14px;margin:10px 0}
+td,th{border:1px solid var(--line);padding:6px 10px;text-align:left}
+tr.in{background:#eff6ff}
+tr.rel td:first-child{font-weight:700;color:var(--ok)}
+input[type=range]{width:260px}
+.ok{color:var(--ok);font-weight:600}.bad{color:var(--bad);font-weight:600}
+details{background:#f1f5f9;border-radius:6px;padding:8px 12px;margin-top:10px}
+.feedback{margin-top:10px;font-weight:600}
+.stat{display:inline-block;background:#f1f5f9;border-radius:8px;padding:8px 14px;margin:4px 8px 0 0}
+</style>
+</head>
+<body data-kp="KP-RAG-004">
+<!-- pg: PG-S01-004 kp: KP-RAG-004 -->
+<header>
+  课程 <b>RAG</b> · 课节 <b>S01</b> · 知识点 <b>KP-RAG-004</b> · 页面 <b>PG-S01-004</b><br>
+  来源依据：<b>SRC-003</b>（RAG 综述）、<b>SRC-001</b>（RAG 原始论文） · 先修：KP-RAG-003
+</header>
+<main>
+<h1>检索策略与 top-k 取舍</h1>
+<p class="meta">对应知识点：KP-RAG-004（必修 · 进阶）｜教学目标：理解 top-k 对召回与噪声的影响，区分两种检索失败。</p>
+
+<section data-node-id="NODE-S01-010">
+  <h2>一、概念：k 不是越大越好</h2>
+  <p>检索器按相似度从高到低返回 <strong>top-k</strong> 篇文档。k 太小，相关文档可能被漏掉（<strong>召回不足</strong>）；
+  k 太大，不相关的噪声文档挤进上下文，既占长度预算又可能误导生成（SRC-003）。</p>
+  <p>还要区分两种完全不同的失败：<strong>检索不到</strong>（相关文档没进 top-k，问题出在检索侧）与
+  <strong>检索到但没用上</strong>（文档进了上下文却被生成器忽略，问题出在生成侧或组装位置）。
+  把后者误当前者，就会去错方向调系统。</p>
+</section>
+
+<section data-node-id="NODE-S01-011">
+  <h2>二、交互：调一调 k，看召回与噪声怎么变</h2>
+  <p class="meta">判断什么：取多大的 k 合适；能改什么：滑动条调 k（1—6）；观察什么：命中的相关文档数与混入的噪声文档数；独立验证：找到“召回全部相关文档”的最小 k，并观察它的代价。</p>
+  <p>某次查询的检索结果（按相似度排序，<span class="ok">加粗绿字</span>为真正相关）：</p>
+  <table id="docTable">
+    <tr><th>排名</th><th>文档</th><th>相似度</th><th>是否进 top-k</th></tr>
+  </table>
+  <p>k = <input type="range" id="k" min="1" max="6" step="1" value="2"> <strong id="kv">2</strong></p>
+  <div>
+    <span class="stat">召回相关：<strong id="hit">0</strong> / 2</span>
+    <span class="stat">混入噪声：<strong id="noise">0</strong> 篇</span>
+  </div>
+  <div class="feedback" id="kFb"></div>
+</section>
+
+<section data-node-id="NODE-S01-012">
+  <h2>三、即学即测（ACT-S01-004）</h2>
+  <p><strong>题目</strong>：一个 RAG 系统回答错了，排查发现相关文档已经在 top-3 里，但回答完全没用它。
+  最应该调整的是哪一侧？</p>
+  <div id="quiz"></div>
+  <div class="feedback" id="quizFb"></div>
+  <details>
+    <summary>答案要点与解析</summary>
+    <p><strong>答案</strong>：B。</p>
+    <p><strong>要点</strong>：文档已进入上下文，问题在“没被用上”——应检查上下文组装与位置（结合 KP-RAG-002 的
+    中间丢失）或生成侧，而不是盲目扩大 k。</p>
+    <p><strong>易错点</strong>：选 A 对应误区 <code>MIS-RAG-004-01</code>（以为 top-k 越大越好）；
+    把这类失败笼统归为“模型不会答”对应误区 <code>MIS-RAG-004-02</code>。</p>
+  </details>
+</section>
+</main>
+
+<script>
+const docs=[{n:'D1 检索增强生成的定义',s:0.91,rel:1},{n:'D2 向量数据库安装指南',s:0.74,rel:0},
+{n:'D3 RAG 的评价指标',s:0.68,rel:1},{n:'D4 深度强化学习入门',s:0.52,rel:0},
+{n:'D5 食堂本周菜单',s:0.31,rel:0},{n:'D6 自行车补胎教程',s:0.12,rel:0}];
+function update(){
+  const k=+document.getElementById('k').value;
+  document.getElementById('kv').textContent=k;
+  const t=document.getElementById('docTable');
+  t.innerHTML='<tr><th>排名</th><th>文档</th><th>相似度</th><th>是否进 top-k</th></tr>';
+  let hit=0,noise=0;
+  docs.forEach((d,i)=>{const inn=i<k;if(inn){d.rel?hit++:noise++;}
+    const tr=document.createElement('tr');
+    if(inn)tr.className='in';if(d.rel)tr.classList.add('rel');
+    tr.innerHTML='<td>'+(i+1)+'</td><td>'+d.n+'</td><td>'+d.s.toFixed(2)+'</td><td>'+(inn?'✓ 进入':'—')+'</td>';
+    t.appendChild(tr);});
+  document.getElementById('hit').textContent=hit;
+  document.getElementById('noise').textContent=noise;
+  const fb=document.getElementById('kFb');
+  if(hit===2&&k===3){fb.className='feedback ok';fb.textContent='✓ 最优：k=3 是召回全部 2 篇相关文档的最小 k。代价是混入 1 篇噪声（D2 恰好排在两篇相关文档中间）——真实系统里“零噪声”往往做不到，只能权衡。';}
+  else if(hit<2){fb.className='feedback bad';fb.textContent='召回不足：还有相关文档没进 top-k。';}
+  else{fb.className='feedback bad';fb.textContent='召回了全部相关文档，但 k='+k+' 比最优多混入 '+(noise-1)+' 篇噪声——它们会白白占用上下文预算。';}
+}
+document.getElementById('k').oninput=update;update();
+const quiz={opts:[
+ 'A. 检索侧：继续把 k 调大，直到回答正确',
+ 'B. 生成侧 / 组装侧：文档已在上下文里却没用上，先查组装位置与生成环节',
+ 'C. 编码器：一定是向量算错了',
+ 'D. 不用调：这是模型能力问题，系统没毛病'],ans:1};
+const qz=document.getElementById('quiz'),qfb=document.getElementById('quizFb');
+quiz.opts.forEach((o,i)=>{const b=document.createElement('button');b.textContent=o;
+  b.onclick=()=>{qfb.className='feedback '+(i===quiz.ans?'ok':'bad');
+    qfb.textContent=i===quiz.ans?'✓ 回答正确':'✗ 再想想：先分清失败在“检索不到”还是“检索到没用上”';};
+  qz.appendChild(b);});
+</script>
+</body>
+</html>

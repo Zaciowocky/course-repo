@@ -1,4 +1,4 @@
-version: 0.1.0
+version: 0.2.0
 sources:
   - id: SRC-001
     title: Retrieval-Augmented Generation for Knowledge-Intensive NLP Tasks
@@ -7,8 +7,8 @@ sources:
     publisher: NeurIPS 2020
     url: https://arxiv.org/abs/2005.11401
     fetched: 2026-11-13
-    applies_to: [KP-RAG-001, KP-RAG-002]
-    usage: 课程范围内的权威依据
+    applies_to: [KP-RAG-001, KP-RAG-002, KP-RAG-004, KP-RAG-006]
+    usage: 课程范围内的权威依据：RAG 基本结构、检索与生成分工
 
   - id: SRC-002
     title: 课程讲义（教师指定）
@@ -17,5 +17,45 @@ sources:
     publisher: 课程组
     url: local
     fetched: 2026-11-13
-    applies_to: [KP-RAG-002]
+    applies_to: [KP-RAG-005, KP-RAG-008]
     usage: 决定课程范围与教学要求
+
+  - id: SRC-003
+    title: "Retrieval-Augmented Generation for Large Language Models: A Survey"
+    kind: paper
+    tier: 权威
+    publisher: arXiv 2023（Gao 等）
+    url: https://arxiv.org/abs/2312.10997
+    fetched: 2026-11-27
+    applies_to: [KP-RAG-001, KP-RAG-003, KP-RAG-004, KP-RAG-006, KP-RAG-007]
+    usage: RAG 范式划分、检索与生成两侧评价指标的权威综述
+
+  - id: SRC-004
+    title: "Sentence-BERT: Sentence Embeddings using Siamese BERT-Networks"
+    kind: paper
+    tier: 权威
+    publisher: EMNLP-IJCNLP 2019
+    url: https://arxiv.org/abs/1908.10084
+    fetched: 2026-11-27
+    applies_to: [KP-RAG-003]
+    usage: 句向量编码与余弦相似度检索的依据
+
+  - id: SRC-005
+    title: "Lost in the Middle: How Language Models Use Long Contexts"
+    kind: paper
+    tier: 权威
+    publisher: TACL 2024（Liu 等）
+    url: https://arxiv.org/abs/2307.03172
+    fetched: 2026-11-27
+    applies_to: [KP-RAG-002, KP-RAG-005]
+    usage: 上下文位置影响生成利用率的依据（中间丢失现象）
+
+  - id: SRC-006
+    title: 课程实验环境说明（页面内置最小 RAG 实验）
+    kind: course
+    tier: 指定
+    publisher: 课程组
+    url: local
+    fetched: 2026-11-27
+    applies_to: [KP-RAG-008]
+    usage: 动手实验的任务设定与验收方式
