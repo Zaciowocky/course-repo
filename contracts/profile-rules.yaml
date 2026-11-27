@@ -66,6 +66,22 @@ misconceptions:
   resolve_after_correct_alone: 2    # 初值：此后该知识点上独立做对 2 次、且这个误区没再出现 → resolved
   # 再出现时 status 回到 active、count 加 1
 
+# ---------- 学生更正（任务书 4.3 更正记录；工具 apply_correction） ----------
+corrections:
+  higher:     # 学生说“我其实会了”
+    on_open: 标待确认（pending_reason = correction），学伴出 1 道验证题，优先迁移题或没做过的检测题
+    accept_if: 验证题独立做对；作为一条有效证据照常计入掌握概率
+    on_reject: 做错或提示后做对则驳回，作答照常计入，原档位不因更正改变
+  lower:      # 学生说“我其实没懂”
+    on_open: 直接采纳，不需要验证题；state 改为 gap、清除待确认
+    p_mastery_cap: 0.5                # 初值：掌握概率降到不高于此值，防止下一次作答又算回原档
+
+# ---------- 讲法效果（任务书 4.2 讲法记忆；工具 update_strategy） ----------
+strategies:
+  # 学伴讲完记一次 used；该知识点下一次有效作答回来时由 record_event 结算：
+  # 独立做对则 success_after 加 1；无论对错都清掉 awaiting_outcome
+  settle_on: next_evidence
+
 # ---------- 纠结信号（只计数，不改掌握概率） ----------
 struggle_signals:
   ask: op = ask
@@ -88,6 +104,7 @@ forgetting:
 # ---------- 错题回顾（任务书 4.2） ----------
 review:
   box_intervals_days: [1, 2, 4, 8, 16]   # 任务书：第 1—5 盒的复习间隔；新错题进第 1 盒
+  correct_means: 独立做对（result = correct 且 hint_level 不超过 mastery.correct_max_hint_level）
   on_correct: 升一盒，第 5 盒不再升
   on_wrong: 回第 1 盒
   mastered_after_box5_correct: 2         # 任务书：第 5 盒连续答对两次标记已掌握
