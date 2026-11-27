@@ -10,7 +10,8 @@ auth:
 student_tools:
   - name: get_course_version
     request:  {course_id: string}
-    response: {latest_tag: string, changelog: string, migration_required: boolean}
+    response: {latest_tag: string, changelog: string, migration_required: boolean,
+               report_schema_version: string}   # 客户端按此版本上报
   - name: report_progress
     request:  {report: object}          # 按 report.schema.json 校验，report_id 去重
     response: {accepted: integer, rejected: integer, errors: array}
