@@ -1,4 +1,6 @@
 fastapi>=0.110
-uvicorn[standard]>=0.27
+# 不用 uvicorn[standard]：它依赖 httptools / uvloop，Windows 与 Python 3.14 下装不上
+uvicorn>=0.27
 pydantic>=2.5
+jsonschema>=4.20
 httpx>=0.27
